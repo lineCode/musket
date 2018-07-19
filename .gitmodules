@@ -1,0 +1,3 @@
+[submodule "submodule/spirea"]
+	path = submodule/spirea
+	url = https://github.com/LNSEAB/spirea.git

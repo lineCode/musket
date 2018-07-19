@@ -1,0 +1,6 @@
+sandbox/
+.vscode/
+.cquery
+*.exe
+*.pdb
+*.obj
