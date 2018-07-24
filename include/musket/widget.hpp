@@ -45,9 +45,6 @@ namespace detail {
 		std::weak_ptr< detail::window_context > wnd;
 	};
 
-	struct weak_widget_tag
-	{ };
-
 } // namespace detail
 
 	template <typename T>
