@@ -90,7 +90,7 @@ namespace button_event {
 			auto const sz = size();
 			spirea::dwrite::text_format format = create_text_format( font, ( sz.bottom - sz.top ) * 0.7f );
 			text_ = create_text_layout( format, sz, str );
-			text_->SetTextAlignment( spirea::dwrite::text_alignment::center );
+			text_->SetTextAlignment( font.align );
 			text_->SetParagraphAlignment( spirea::dwrite::paragraph_alignment::far );
 		}
 

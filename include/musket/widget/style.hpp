@@ -25,6 +25,7 @@ namespace musket {
 		spirea::dwrite::font_weight weight;
 		spirea::dwrite::font_style style;
 		spirea::dwrite::font_stretch stretch;
+		spirea::dwrite::text_alignment align;
 		std::optional< float > size = {};
 	};
 

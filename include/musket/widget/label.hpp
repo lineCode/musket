@@ -58,7 +58,7 @@ namespace musket {
 		{
 			auto format = create_text_format( font, ( rc_.bottom - rc_.top ) * 0.7f );
 			text_ = create_text_layout( format, rc_, str );
-			text_->SetTextAlignment( spirea::dwrite::text_alignment::center );
+			text_->SetTextAlignment( font.align );
 			text_->SetParagraphAlignment( spirea::dwrite::paragraph_alignment::far );
 		}
 
