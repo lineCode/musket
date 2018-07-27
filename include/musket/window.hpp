@@ -69,6 +69,8 @@ namespace detail {
 		void hide() noexcept;
 		void redraw() const noexcept;
 
+		spirea::rect_t< float > client_area_size() const noexcept;
+
 		spirea::windows::window window_handle() const noexcept;
 		spirea::d2d1::hwnd_render_target render_target() const noexcept;
 

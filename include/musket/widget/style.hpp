@@ -10,6 +10,7 @@
 #ifndef MUSKET_WIDGET_STYLE_HPP_
 #define MUSKET_WIDGET_STYLE_HPP_
 
+#include <cassert>
 #include <string>
 #include <optional>
 #include <spirea/windows/d2d1.hpp>
@@ -57,28 +58,29 @@ namespace musket {
 	}
 
 	template <typename T>
-	constexpr T optional_brush(T v) noexcept
-	{
-		using underlying = std::underlying_type_t< T >;
-		return static_cast< T >( static_cast< underlying >( v ) | ( 1 << ( sizeof( underlying ) * 8 - 1 ) ) );
-	}
+	struct is_optional :
+		public std::false_type
+	{ };
 
 	template <typename T>
-	constexpr bool is_optional_brush(T v) noexcept
-	{
-		using underlying = std::underlying_type_t< T >;
-		return ( static_cast< underlying >( v ) >> ( sizeof( underlying ) * 8 - 1 ) ) != 0;
-	}
+	struct is_optional< std::optional< T > > :
+		public std::true_type
+	{ };
 
-	template <typename T, T... Elements>
+	struct edge_property
+	{
+		rgba_color_t color;
+		float size = 1.0f;
+	};
+
+	enum struct appearance : std::uint8_t
+	{
+		fg, bg, edge, text,
+	};
+
+	template <appearance... Elements>
 	class brush_holder
 	{
-		template <T Elem>
-		struct value_holder
-		{
-			static constexpr T value = Elem;
-		};
-
 		std::array< spirea::d2d1::solid_color_brush, sizeof...( Elements ) > brushes_;
 
 	public:
@@ -88,36 +90,166 @@ namespace musket {
 		brush_holder(spirea::d2d1::render_target const& rt, Colors const&... colors)
 		{
 			static_assert( sizeof...( Elements ) == sizeof...( Colors ) );
-			( ..., assign_brush( value_holder< Elements >{}, rt, colors ) );
+			( ..., assign_brush( Elements, rt, colors ) );
 		}
 
-		auto operator[](T n) const noexcept
+		auto operator[](appearance n) const noexcept
 		{
-			return brushes_[index_of( n )].get();
+			auto const i = index_of( n );
+			assert( i < sizeof...( Elements ) );
+			return brushes_[i].get();
 		}
 
 	private:
-		template <typename Element, typename Color>
-		void assign_brush(Element, spirea::d2d1::render_target const& rt, Color const& c)
+		template <typename Color>
+		void assign_brush(appearance n, spirea::d2d1::render_target const& rt, Color const& c)
 		{
-			if constexpr( is_optional_brush( Element::value ) ) {
+			if constexpr( std::is_same_v< Color, edge_property > ) {
+				auto const color = rgba_color_traits< spirea::d2d1::color_f >::construct( c.color );
+				rt->CreateSolidColorBrush( color, brushes_[index_of( n )].pp() ); 
+			}
+			else if constexpr( std::is_same_v< Color, std::optional< edge_property > > ) {
+				if( c ) {
+					auto const color = rgba_color_traits< spirea::d2d1::color_f >::construct( c->color );
+					rt->CreateSolidColorBrush( color, brushes_[index_of( n )].pp() ); 
+				}
+			}
+			else if constexpr( is_optional< Color >::value ) {
 				if( c ) {
 					auto const color = rgba_color_traits< spirea::d2d1::color_f >::construct( *c );
-					rt->CreateSolidColorBrush( color, brushes_[index_of( Element::value )].pp() ); 
+					rt->CreateSolidColorBrush( color, brushes_[index_of( n )].pp() ); 
 				}
 			}
 			else {
 				auto const color = rgba_color_traits< spirea::d2d1::color_f >::construct( c );
-				rt->CreateSolidColorBrush( color, brushes_[index_of( Element::value )].pp() ); 
+				rt->CreateSolidColorBrush( color, brushes_[index_of( n )].pp() ); 
 			}
 		}
 
-		static constexpr std::size_t index_of(T n) noexcept
+		static constexpr std::size_t index_of(appearance n) noexcept
 		{
-			using underlying = std::underlying_type_t< T >;
-			return static_cast< std::size_t >( static_cast< underlying >( n ) & ~( 1 << ( sizeof( underlying ) * 8 - 1 ) ) );
+			std::size_t i = 0;
+			( ( ( n != Elements ) && ++i ) && ... );
+			return i;
 		}
 	};
+
+namespace appearance_detail {
+
+	template <typename T, typename Member>
+	constexpr appearance make_appearance(T v, Member) noexcept
+	{
+		return static_cast< appearance >( v );
+	}
+
+	constexpr auto invalid_appearance = static_cast< appearance >( std::numeric_limits< std::underlying_type_t< appearance > >::max() );
+
+	template <typename StyleType, typename = void>
+	struct has_fg_color
+	{ 
+		static constexpr auto value = invalid_appearance;
+	};
+	
+	template <typename StyleType>
+	struct has_fg_color< StyleType, std::void_t< decltype( std::declval< StyleType >().fg_color ) > >
+	{ 
+		static constexpr auto value = make_appearance( appearance::fg, decltype( std::declval< StyleType >().fg_color ){} );
+	};
+
+	template <typename StyleType, typename = void>
+	struct has_bg_color
+	{ 
+		static constexpr auto value = invalid_appearance;
+	};
+	
+	template <typename StyleType>
+	struct has_bg_color< StyleType, std::void_t< decltype( std::declval< StyleType >().bg_color ) > >
+	{ 
+		static constexpr auto value = make_appearance( appearance::bg, decltype( std::declval< StyleType >().bg_color ){} );
+	};
+
+	template <typename StyleType, typename = void>
+	struct has_edge
+	{ 
+		static constexpr auto value = invalid_appearance;
+	};
+	
+	template <typename StyleType>
+	struct has_edge< StyleType, std::void_t< decltype( std::declval< StyleType >().edge ) > >
+	{ 
+		static constexpr auto value = make_appearance( appearance::edge, decltype( std::declval< StyleType >().edge ){} );
+	};
+
+	template <typename StyleType, typename = void>
+	struct has_text_color
+	{ 
+		static constexpr auto value = invalid_appearance;
+	};
+	
+	template <typename StyleType>
+	struct has_text_color< StyleType, std::void_t< decltype( std::declval< StyleType >().text_color ) > >
+	{ 
+		static constexpr auto value = make_appearance( appearance::text, decltype( std::declval< StyleType >().text_color ){} );
+	};
+	
+	template <typename...>
+	struct has_appearance_holder
+	{ };
+
+	template <typename StyleType>
+	using has_appearance_holder_t = has_appearance_holder<
+		has_fg_color< StyleType >,
+		has_bg_color< StyleType >,
+		has_edge< StyleType >,
+		has_text_color< StyleType >
+	>;
+
+	template <appearance...>
+	struct appearance_holder
+	{ };
+
+	template <typename StyleType, typename Init, typename Elems, typename = void>
+	struct make_brush_holder_impl;
+
+	template <typename StyleType, typename Result>
+	struct make_brush_holder_impl< StyleType, Result, appearance_holder<>, void >
+	{
+		using type = Result;
+	};
+
+	template <typename StyleType, typename Result, appearance Val, appearance... Rest>
+	struct make_brush_holder_impl< StyleType, Result, appearance_holder< Val, Rest... >, std::enable_if_t< Val == invalid_appearance > >
+	{
+		using type = typename make_brush_holder_impl< StyleType, Result, appearance_holder< Rest... > >::type;
+	};
+
+	template <typename StyleType, appearance... V, appearance Val, appearance... Rest>
+	struct make_brush_holder_impl< StyleType, brush_holder< V... >, appearance_holder< Val, Rest... >, std::enable_if_t< Val != invalid_appearance > >
+	{
+		using type = typename make_brush_holder_impl< StyleType, brush_holder< V..., Val >, appearance_holder< Rest... > >::type;
+	};
+	
+} // namespace appearance_detail
+
+	template <typename StyleType, typename = appearance_detail::has_appearance_holder_t< StyleType >>
+	struct make_brush_holder;
+
+	template <typename StyleType, typename... Elems>
+	struct make_brush_holder< StyleType, appearance_detail::has_appearance_holder< Elems... > >
+	{
+		using type = typename appearance_detail::make_brush_holder_impl<
+			StyleType, brush_holder<>, appearance_detail::appearance_holder< Elems::value... >
+		>::type;
+	};
+
+	template <typename StyleType>
+	struct style_data_t
+	{
+		StyleType style;
+		typename make_brush_holder< StyleType >::type brush;
+	};
+
+	using appear = appearance;
 
 } // namespace musket
 

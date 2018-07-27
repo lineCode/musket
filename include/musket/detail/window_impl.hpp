@@ -47,6 +47,9 @@ namespace detail {
 				),
 				rt.pp()
 			) );
+
+			float const dpi = static_cast< float >( spirea::windows::api::get_dpi_for_window( wnd ) );
+			rt->SetDpi( dpi, dpi );
 		}
 	};
 
@@ -164,6 +167,18 @@ namespace detail {
 		spirea::windows::api::invalidate_rect( p_->wnd, nullptr, false );
 	}
 
+	spirea::rect_t< float > window::client_area_size() const noexcept
+	{
+		auto rc = spirea::rect_traits< spirea::rect_t< float > >::construct( p_->wnd.get_client_rect() );
+		auto const dpi = spirea::windows::api::get_dpi_for_window( p_->wnd );
+		constexpr auto default_dpi = spirea::windows::api::user_default_screen_dpi< float >;
+
+		rc.right = rc.right * default_dpi / dpi;
+		rc.bottom = rc.bottom * default_dpi / dpi;
+
+		return rc;
+	}
+
 	inline spirea::windows::window window::window_handle() const noexcept
 	{
 		assert( p_ );
@@ -182,6 +197,9 @@ namespace detail {
 		assert( p_ );
 		w.set_window( p_, connect_events( p_->event_handler, w ) );
 
+		if constexpr( has_on_event< widget< T >, window_event::attached_widget >::value ) {
+			w->on_event( window_event::attached_widget{}, *this );
+		}
 		if constexpr( has_on_event< widget< T >, window_event::recreated_target >::value ) {
 			w->on_event( window_event::recreated_target{}, *this );
 		}

@@ -40,6 +40,11 @@ namespace window_event {
 		using type = void (window&, spirea::area_t< std::uint32_t > const&);
 	};
 
+	struct attached_widget
+	{
+		using type = void (window&);
+	};
+
 	struct mouse_button_pressed
 	{
 		using type = void (window&, mouse_button, mouse_button, spirea::point_t< std::int32_t > const&);
@@ -80,6 +85,7 @@ namespace detail {
 		window_event::draw,
 		window_event::recreated_target,
 		window_event::resize,
+		window_event::attached_widget,
 		window_event::mouse_button_pressed,
 		window_event::mouse_button_released,
 		window_event::detail::mouse_moved_distributor
@@ -204,10 +210,10 @@ namespace detail {
 			signal_.invoke( buf_ );
 
 			std::shared_ptr< object > hit;
-			for( auto const& i : buf_ ) {
-				auto const rc = i->size();
+			for( auto itr = buf_.rbegin(); itr != buf_.rend(); ++itr ) {
+				auto const rc = (*itr)->size();
 				if( pt.x >= rc.left && pt.x <= rc.right && pt.y >= rc.top && pt.y <= rc.bottom ) {
-					hit = i;
+					hit = *itr;
 					break;
 				}
 			}

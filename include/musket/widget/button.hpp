@@ -17,9 +17,8 @@ namespace musket {
 	struct button_style
 	{
 		rgba_color_t bg_color;
-		std::optional< rgba_color_t > edge_color;
+		std::optional< edge_property > edge;
 		rgba_color_t text_color;
-		float edge_size = 1.0f;
 	};
 
 namespace button_event {
@@ -49,19 +48,10 @@ namespace button_event {
 			default_, over, pressed,
 		};
 
-		enum struct color : std::uint8_t
-		{
-			bg, edge, text,
-		};
-
-		struct style_data
-		{
-			button_style style;
-			brush_holder< color, color::bg, optional_brush( color::edge ), color::text > brush;
-		};
+		using style_data_type = style_data_t< button_style >;
 
 		using state_machine_type = state_machine< 
-			style_data, state, 
+			style_data_type, state, 
 			state::default_, state::over, state::pressed 
 		>;
 
@@ -73,8 +63,8 @@ namespace button_event {
 	public:
 		template <typename Rect>
 		button(
-			std::string_view str, 
 			Rect const& rc,
+			std::string_view str, 
 			font_format const& font,
 			button_style const& default_style,
 			button_style const& over_style,
@@ -84,7 +74,7 @@ namespace button_event {
 			str_{ str.begin(), str.end() },
 			states_{ 
 				state::default_, 
-				style_data{ default_style, {} }, style_data{ over_style, {} }, style_data{ pressed_style, {} } 
+				style_data_type{ default_style, {} }, style_data_type{ over_style, {} }, style_data_type{ pressed_style, {} } 
 			}
 		{
 			auto const sz = size();
@@ -110,17 +100,17 @@ namespace button_event {
 			auto const rt = wnd.render_target();
 			auto const& data = states_.get();
 
-			rt->FillRectangle( rc, data.brush[color::bg] );
-			if( data.style.edge_color ) {
-				rt->DrawRectangle( rc, data.brush[color::edge], data.style.edge_size );
+			rt->FillRectangle( rc, data.brush[appear::bg] );
+			if( data.style.edge ) {
+				rt->DrawRectangle( rc, data.brush[appear::edge], data.style.edge->size );
 			}
-			rt->DrawTextLayout( { rc.left, rc.top }, text_.get(), data.brush[color::text], spirea::d2d1::draw_text_options::clip );
+			rt->DrawTextLayout( { rc.left, rc.top }, text_.get(), data.brush[appear::text], spirea::d2d1::draw_text_options::clip );
 		}
 
 		void on_event(window_event::recreated_target, window& wnd)
 		{
-			auto create_brushes = [&](style_data& sd) {
-				sd.brush = { wnd.render_target(), sd.style.bg_color, sd.style.edge_color, sd.style.text_color };
+			auto create_brushes = [&](style_data_t< button_style >& sd) {
+				sd.brush = { wnd.render_target(), sd.style.bg_color, sd.style.edge, sd.style.text_color };
 			};
 
 			for( auto& i : states_.data() ) {
