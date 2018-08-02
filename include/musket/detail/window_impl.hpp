@@ -29,9 +29,19 @@ namespace detail {
 
 		template <typename Rect, typename Color, typename T>
 		window_context(std::string_view caption, Rect const& rc, Color const& bg_color, T) :
-			wnd{ caption, T::style, T::ex_style, spirea::rect_traits< RECT >::construct( rc ) },
 			bg_color{ rgba_color_traits< spirea::d2d1::color_f >::construct( bg_color ) }
 		{ 
+			auto trc = spirea::rect_traits< RECT >::construct( rc );
+			auto const dpi = spirea::try_result( spirea::windows::api::get_dpi_for_monitor( 
+				spirea::windows::api::monitor_from_point( { trc.left, trc.top } ) 
+			) );
+			constexpr auto default_dpi = spirea::windows::api::user_default_screen_dpi< LONG >;
+
+			auto const width = ( trc.right - trc.left ) * static_cast< LONG >( dpi.x ) / default_dpi;
+			auto const height = ( trc.bottom - trc.top ) * static_cast< LONG >( dpi.y ) / default_dpi;
+
+			wnd = { caption, T::style, T::ex_style, trc.left, trc.top, width, height };
+
 			recreate_target();
 		}
 
