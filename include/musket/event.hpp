@@ -91,6 +91,18 @@ namespace detail {
 		window_event::detail::mouse_moved_distributor
 	>;
 
+	using default_window_events = events_holder<
+		window_event::draw,
+		window_event::recreated_target,
+		window_event::resize,
+		window_event::attached_widget,
+		window_event::mouse_button_pressed,
+		window_event::mouse_button_released,
+		window_event::mouse_entered,
+		window_event::mouse_leaved,
+		window_event::mouse_moved
+	>;
+
 	template <typename Widget, typename Event, typename = typename Event::type, typename = void>
 	struct has_on_event :
 		public std::false_type
@@ -105,9 +117,9 @@ namespace detail {
 	{ };
 
 namespace detail {
-
+	
 	template <typename Event, typename EventFunc = typename Event::type, typename = void>
-	class event_handler_element
+	class event_handler_element_default
 	{
 		spirea::signal< EventFunc, spirea::signal_option::fold > signal_;
 
@@ -123,10 +135,39 @@ namespace detail {
 		{
 			return signal_.invoke( std::forward< Args >( args )... );
 		}
+
+		void shrink_to_fit()
+		{
+			signal_.shrink_to_fit();
+		}
+	};
+
+	template <typename Event, typename EventFunc = typename Event::type, typename = void>
+	class event_handler_element_to_widget
+	{
+		spirea::signal< EventFunc, spirea::signal_option::fold > signal_;
+
+	public:
+		template <typename F>
+		spirea::connection connect(F&& f)
+		{
+			return signal_.connect( std::forward< F >( f ) );
+		}
+
+		template <typename... Args>
+		auto invoke(Args&&... args)
+		{
+			return signal_.invoke( std::forward< Args >( args )... );
+		}
+
+		void shrink_to_fit()
+		{
+			signal_.shrink_to_fit();
+		}
 	};
 
 	template <typename Event, typename... Args>
-	class event_handler_element< Event, void (Args...), std::enable_if_t<
+	class event_handler_element_to_widget< Event, void (Args...), std::enable_if_t<
 		std::is_same_v< Event, window_event::mouse_button_pressed >
 		|| std::is_same_v< Event, window_event::mouse_button_released > 
 	> >
@@ -143,9 +184,9 @@ namespace detail {
 				auto const rc = w->size();
 				if( pt.x >= rc.left && pt.x <= rc.right && pt.y >= rc.top && pt.y <= rc.bottom ) {
 					w->on_event( Event{}, args... );
-					return true;
+					return false;
 				}
-				return false;
+				return true;
 			} );
 		}
 
@@ -154,10 +195,15 @@ namespace detail {
 		{
 			signal_.invoke( pt, std::forward< As >( args )... );
 		}
+
+		void shrink_to_fit()
+		{
+			signal_.shrink_to_fit();
+		}
 	};
 
 	template <typename Event, typename... Args>
-	class event_handler_element< Event, void (Args...), std::enable_if_t<
+	class event_handler_element_to_widget< Event, void (Args...), std::enable_if_t<
 		std::is_same_v< Event, window_event::detail::mouse_moved_distributor > 
 	> >
 	{
@@ -222,49 +268,71 @@ namespace detail {
 				if( over_ ) {
 					if( over_->wp.lock() == hit->wp.lock() ) {
 						if( over_->moved ) {
-							over_->moved( args..., pt );
+							over_->moved( std::forward< Args >( args )..., pt );
 						}
 						return;
 					}
 					if( over_->leaved ) {
-						over_->leaved( args... );
+						over_->leaved( std::forward< Args >( args )... );
 					}
 				}
 
 				if( hit->entered ) {
-					hit->entered( args... );
+					hit->entered( std::forward< Args >( args )... );
 				}
 			}
 			else {
 				if( over_ && over_->leaved ) {
-					over_->leaved( args... );
+					over_->leaved( std::forward< Args >( args )... );
 				}
 			}
 			over_ = hit;
+		}
+
+		template <typename... As>
+		void invoke(window_event::mouse_leaved, As&&... args)
+		{
+			if( over_ ) {
+				if( over_->leaved ) {
+					over_->leaved( std::forward< As >( args )... );
+				}
+				over_ = {};
+			}
+		}
+
+		void shrink_to_fit()
+		{
+			signal_.shrink_to_fit();
 		}
 	};
 
 } // namespace detail
 
-	template <typename Events>
+	template <typename Events, template <typename...> typename Element = detail::event_handler_element_default>
 	class event_handler;
 
-	template <typename... Events>
-	class event_handler< events_holder< Events... > >
+	template <typename... Events, template <typename...> typename Element>
+	class event_handler< events_holder< Events... >, Element >
 	{
-		std::tuple< detail::event_handler_element< Events >... > table_;
+		std::tuple< Element< Events >... > table_;
 
 	public:
 		template <typename Event, typename... Args>
 		spirea::connection connect(Event, Args&&... args)
 		{
-			return std::get< detail::event_handler_element< Event > >( table_ ).connect( std::forward< Args >( args )... );
+			return std::get< Element< Event > >( table_ ).connect( std::forward< Args >( args )... );
 		}
 
 		template <typename Event, typename... Args>
 		auto invoke(Event, Args&&... args)
 		{
-			return std::get< detail::event_handler_element< Event > >( table_ ).invoke( std::forward< Args >( args )... );
+			return std::get< Element< Event > >( table_ ).invoke( std::forward< Args >( args )... );
+		}
+
+		template <typename Event>
+		void shrink_to_fit(Event)
+		{
+			std::get< Element< Event > >( table_ ).shrink_to_fit();
 		}
 	};
 
@@ -297,8 +365,8 @@ namespace detail {
 
 namespace detail {
 
-	template <typename Events, typename Event, typename R, typename... Args, typename Widget>
-	inline spirea::connection connect_event_helper(event_handler< Events >& eh, Event, R (*)(Args...), Widget& w)
+	template <typename Events, template <typename...> typename Element, typename Event, typename R, typename... Args, typename Widget>
+	inline spirea::connection connect_event_helper(event_handler< Events, Element >& eh, Event, R (*)(Args...), Widget& w)
 	{
 		if constexpr( 
 			std::is_same_v< Event, window_event::mouse_button_pressed > 
@@ -312,8 +380,8 @@ namespace detail {
 		}
 	}
 
-	template <typename Events, typename Event, typename Widget>
-	inline void connect_events_impl(event_handler< Events >& eh, Event, Widget& w, event_connections< Events >& conns)
+	template <typename Events, template <typename...> typename Element, typename Event, typename Widget>
+	inline void connect_events_impl(event_handler< Events, Element >& eh, Event, Widget& w, event_connections< Events >& conns)
 	{
 		if constexpr( std::is_same_v< Event, window_event::detail::mouse_moved_distributor > ) {
 			constexpr bool has_events = 
@@ -331,8 +399,8 @@ namespace detail {
 
 } // namespace detail
 
-	template <typename... Events, typename Widget>
-	inline event_connections< events_holder< Events... > > connect_events(event_handler< events_holder< Events... > >& eh, Widget& w)
+	template <typename... Events, typename Widget, template <typename...> typename Element>
+	inline event_connections< events_holder< Events... > > connect_events(event_handler< events_holder< Events... >, Element >& eh, Widget& w)
 	{
 		event_connections< events_holder< Events... > > conns;
 		( ..., detail::connect_events_impl( eh, Events{}, w, conns ) );

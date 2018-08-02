@@ -11,6 +11,7 @@
 #define MUSKET_DETAIL_WINDOW_IMPL_HPP_
 
 #include "../window.hpp"
+#include <spirea/mp/algorithm.hpp>
 
 namespace musket {
 
@@ -21,7 +22,10 @@ namespace detail {
 		spirea::windows::window wnd;
 		spirea::d2d1::hwnd_render_target rt;
 		spirea::d2d1::color_f bg_color;
-		event_handler< window_events > event_handler;
+		event_handler< window_events, detail::event_handler_element_to_widget > to_widget_handler;
+		event_handler< default_window_events > window_events_handler;
+
+		bool mouse_entered = false;
 
 		template <typename Rect, typename Color, typename T>
 		window_context(std::string_view caption, Rect const& rc, Color const& bg_color, T) :
@@ -66,33 +70,65 @@ namespace detail {
 
 		auto invoker = [wnd, wc, mouse_position](auto event, mouse_button btn, spirea::windows::window const& w, WPARAM wparam, LPARAM lparam) mutable {
 			auto const pt = mouse_position( w, lparam );
-			wc->event_handler.invoke( decltype( event ){}, pt, wnd, btn, static_cast< mouse_button >( wparam ), pt );
+			wc->window_events_handler.invoke( decltype( event ){}, wnd, btn, static_cast< mouse_button >( wparam ), pt );
+			wc->to_widget_handler.invoke( decltype( event ){}, pt, wnd, btn, static_cast< mouse_button >( wparam ), pt );
 			return 0;
 		};
 
-		wc->wnd.connect( WM_LBUTTONDOWN, [invoker](spirea::windows::window wnd, WPARAM wparam, LPARAM lparam) mutable {
-			return invoker( window_event::mouse_button_pressed{}, mouse_button::left, wnd, wparam, lparam );
+		auto pressed_event = [invoker](auto event, mouse_button btn, spirea::windows::window const& w, WPARAM wparam, LPARAM lparam) mutable {
+			auto const res = invoker( decltype( event ){}, btn, w, wparam, lparam );
+			SetCapture( w.handle() );
+			return res;
+		};
+
+		auto released_event = [wc, invoker](auto event, mouse_button btn, spirea::windows::window const& w, WPARAM wparam, LPARAM lparam) mutable {
+			auto const res = invoker( decltype( event ){}, btn, w, wparam, lparam );
+			ReleaseCapture();
+			wc->window_events_handler.shrink_to_fit( window_event::mouse_moved{} );
+			return res;
+		};
+
+		wc->wnd.connect( WM_LBUTTONDOWN, [pressed_event](spirea::windows::window wnd, WPARAM wparam, LPARAM lparam) mutable {
+			return pressed_event( window_event::mouse_button_pressed{}, mouse_button::left, wnd, wparam, lparam );
 		} );
-		wc->wnd.connect( WM_RBUTTONDOWN, [invoker](spirea::windows::window wnd, WPARAM wparam, LPARAM lparam) mutable {
-			return invoker( window_event::mouse_button_pressed{}, mouse_button::right, wnd, wparam, lparam );
+		wc->wnd.connect( WM_RBUTTONDOWN, [pressed_event](spirea::windows::window wnd, WPARAM wparam, LPARAM lparam) mutable {
+			return pressed_event( window_event::mouse_button_pressed{}, mouse_button::right, wnd, wparam, lparam );
 		} );
-		wc->wnd.connect( WM_MBUTTONDOWN, [invoker](spirea::windows::window wnd, WPARAM wparam, LPARAM lparam) mutable {
-			return invoker( window_event::mouse_button_pressed{}, mouse_button::middle, wnd, wparam, lparam );
+		wc->wnd.connect( WM_MBUTTONDOWN, [pressed_event](spirea::windows::window wnd, WPARAM wparam, LPARAM lparam) mutable {
+			return pressed_event( window_event::mouse_button_pressed{}, mouse_button::middle, wnd, wparam, lparam );
 		} );
 
-		wc->wnd.connect( WM_LBUTTONUP, [invoker](spirea::windows::window wnd, WPARAM wparam, LPARAM lparam) mutable {
-			return invoker( window_event::mouse_button_released{}, mouse_button::left, wnd, wparam, lparam );
+		wc->wnd.connect( WM_LBUTTONUP, [released_event](spirea::windows::window wnd, WPARAM wparam, LPARAM lparam) mutable {
+			return released_event( window_event::mouse_button_released{}, mouse_button::left, wnd, wparam, lparam );
 		} );
-		wc->wnd.connect( WM_RBUTTONUP, [invoker](spirea::windows::window wnd, WPARAM wparam, LPARAM lparam) mutable {
-			return invoker( window_event::mouse_button_released{}, mouse_button::right, wnd, wparam, lparam );
+		wc->wnd.connect( WM_RBUTTONUP, [released_event](spirea::windows::window wnd, WPARAM wparam, LPARAM lparam) mutable {
+			return released_event( window_event::mouse_button_released{}, mouse_button::right, wnd, wparam, lparam );
 		} );
-		wc->wnd.connect( WM_MBUTTONUP, [invoker](spirea::windows::window wnd, WPARAM wparam, LPARAM lparam) mutable {
-			return invoker( window_event::mouse_button_released{}, mouse_button::middle, wnd, wparam, lparam );
+		wc->wnd.connect( WM_MBUTTONUP, [released_event](spirea::windows::window wnd, WPARAM wparam, LPARAM lparam) mutable {
+			return released_event( window_event::mouse_button_released{}, mouse_button::middle, wnd, wparam, lparam );
 		} );
 
-		wc->wnd.connect( WM_MOUSEMOVE, [wnd, wc, invoker, mouse_position](spirea::windows::window w, WPARAM wparam, LPARAM lparam) mutable {
+		wc->wnd.connect( WM_MOUSEMOVE, [wnd, wc, mouse_position](spirea::windows::window w, WPARAM wparam, LPARAM lparam) mutable {
+			if( !wc->mouse_entered ) {
+				TRACKMOUSEEVENT tm = {};
+				tm.cbSize = sizeof( TRACKMOUSEEVENT );
+				tm.dwFlags = TME_LEAVE;
+				tm.hwndTrack = wc->wnd.handle();
+				tm.dwHoverTime = HOVER_DEFAULT;
+				TrackMouseEvent( &tm );
+
+				wc->mouse_entered = true;
+			}
+
 			auto const pt = mouse_position( w, lparam );
-			wc->event_handler.invoke( window_event::detail::mouse_moved_distributor{}, pt, wnd, static_cast< mouse_button >( wparam ) );
+			wc->window_events_handler.invoke( window_event::mouse_moved{}, wnd, static_cast< mouse_button >( wparam ), pt );
+			wc->to_widget_handler.invoke( window_event::detail::mouse_moved_distributor{}, pt, wnd, static_cast< mouse_button >( wparam ) );
+			return 0;
+		} );
+
+		wc->wnd.connect( WM_MOUSELEAVE, [wnd, wc](spirea::windows::window, WPARAM, LPARAM) mutable {
+			wc->to_widget_handler.invoke( window_event::detail::mouse_moved_distributor{}, window_event::mouse_leaved{}, wnd, get_mouse_button_states() );
+			wc->mouse_entered = false;
 			return 0;
 		} );
 	}
@@ -111,13 +147,15 @@ namespace detail {
 			p_->rt->BeginDraw();
 			p_->rt->Clear( p_->bg_color );
 
-			p_->event_handler.invoke( window_event::draw{}, *this );
+			p_->window_events_handler.invoke( window_event::draw{}, *this );
+			p_->to_widget_handler.invoke( window_event::draw{}, *this );
 
 			auto const res = p_->rt->EndDraw();
 			if( res != S_OK ) {
 				if( res == D2DERR_RECREATE_TARGET ) {
 					p_->recreate_target();
-					p_->event_handler.invoke( window_event::recreated_target{}, *this );
+					p_->window_events_handler.invoke( window_event::recreated_target{}, *this );
+					p_->to_widget_handler.invoke( window_event::recreated_target{}, *this );
 				}
 				else {
 					throw spirea::windows::hresult_error( res );
@@ -133,7 +171,8 @@ namespace detail {
 			auto const height = static_cast< std::uint32_t >( rc.bottom - rc.top );
 
 			spirea::windows::try_hresult( p_->rt->Resize( { width, height } ) );
-			p_->event_handler.invoke( window_event::resize{}, *this, spirea::area_t{ width, height } );
+			p_->window_events_handler.invoke( window_event::resize{}, *this, spirea::area_t{ width, height } );
+			p_->to_widget_handler.invoke( window_event::resize{}, *this, spirea::area_t{ width, height } );
 
 			return 0;
 		} );
@@ -195,7 +234,7 @@ namespace detail {
 	inline void window::attach_widget(widget< T >& w)
 	{
 		assert( p_ );
-		w.set_window( p_, connect_events( p_->event_handler, w ) );
+		w.set_window( p_, connect_events( p_->to_widget_handler, w ) );
 
 		if constexpr( has_on_event< widget< T >, window_event::attached_widget >::value ) {
 			w->on_event( window_event::attached_widget{}, *this );
@@ -203,6 +242,13 @@ namespace detail {
 		if constexpr( has_on_event< widget< T >, window_event::recreated_target >::value ) {
 			w->on_event( window_event::recreated_target{}, *this );
 		}
+	}
+
+	template <typename Event, typename F>
+	inline spirea::connection window::connect(Event, F&& f)
+	{
+		assert( p_ );
+		return p_->window_events_handler.connect( Event{}, std::forward< F >( f ) );
 	}
 
 } // namespace musket

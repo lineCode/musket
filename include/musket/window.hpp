@@ -76,6 +76,9 @@ namespace detail {
 
 		template <typename T>
 		void attach_widget(widget< T >& w);
+
+		template <typename Event, typename F>
+		spirea::connection connect(Event, F&& f);
 	};
 
 	inline int loop()

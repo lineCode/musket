@@ -38,7 +38,7 @@ namespace musket {
 		}
 
 		template <typename Rect>
-		void resize(Rect const& rc) const noexcept
+		void resize(Rect const& rc) noexcept
 		{
 			rc_ = spirea::rect_traits< decltype( rc_ ) >::construct( rc );
 		}
