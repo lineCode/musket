@@ -59,6 +59,7 @@ namespace scroll_bar_event {
 		std::optional< edge_property > edge;
 		std::uint32_t page_value;
 		std::uint32_t max_value;
+		float min_thumb_size;
 	};
 
 	struct scroll_bar_thumb_style
@@ -91,6 +92,7 @@ namespace detail {
 		spirea::connection conn_finish_sliding_;
 		std::uint32_t pos_ = 0;
 		event_handler< scroll_bar_events > handler_;
+		scroll_bar_option options_;
 
 	public:
 		scroll_bar_thumb(
@@ -98,7 +100,8 @@ namespace detail {
 			spirea::rect_t< float > const& rc,
 			scroll_bar_thumb_style const& default_style,
 			scroll_bar_thumb_style const& over_style,
-			scroll_bar_thumb_style const& pressed_style
+			scroll_bar_thumb_style const& pressed_style,
+			scroll_bar_option options
 		) :
 			widget_facade{ rc },
 			parent_{ parent },
@@ -107,7 +110,8 @@ namespace detail {
 				style_data_type{ default_style, {} }, 
 				style_data_type{ over_style, {} }, 
 				style_data_type{ pressed_style, {} }
-			}
+			},
+			options_{ options }
 		{ }
 
 		~scroll_bar_thumb() noexcept
@@ -151,42 +155,8 @@ namespace detail {
 		void on_event(window_event::mouse_button_pressed, window& wnd, mouse_button btn, mouse_button, spirea::point_t< std::int32_t > const& pt)
 		{
 			if( spirea::enabled( btn, mouse_button::left ) ) {
-				prev_pt_ = pt;
 				states_.trasition( state::pressed );
-
-				conn_sliding_ = wnd.connect( window_event::mouse_moved{}, [this](window& wnd, mouse_button, spirea::point_t< std::int32_t > const& pt) mutable {
-					auto const rc = size();
-					auto const parent_rc = parent_->size();
-					if constexpr( Direction == scroll_bar_direction::vertical ) {
-						auto top = rc.top + ( pt.y - prev_pt_.y );
-						if( top < parent_rc.top ) {
-							top = parent_rc.top;
-						} 
-						if( top + rc.height() > parent_rc.bottom ) {
-							top = parent_rc.bottom - rc.height();
-						}
-						resize( spirea::rect_t< float >{ { rc.left, top }, rc.area() } );
-
-						auto const prev_pos = pos_;
-						pos_ = static_cast< std::uint32_t >( std::floor( top * ( parent_->max_value() - parent_->page_value() ) / ( parent_rc.bottom - rc.height() ) ) );
-						if( pos_ != prev_pos ) {
-							handler_.invoke( scroll_bar_event::scroll{}, pos_, pos_ + parent_->page_value() );
-						}
-					}
-					wnd.redraw();
-					prev_pt_ = pt;
-				} );
-				conn_finish_sliding_ = wnd.connect( window_event::mouse_button_released{}, [this](window& wnd, mouse_button btn, mouse_button, spirea::point_t< std::int32_t > const&) mutable {
-					if( spirea::enabled( btn, mouse_button::left ) ) {
-						states_.trasition( state::default_ );
-						wnd.redraw();
-
-						conn_sliding_.disconnect();
-						conn_finish_sliding_.disconnect();
-					}
-				} );
-
-				wnd.redraw();
+				press_left_button( wnd, pt );
 			}
 		}
 
@@ -214,6 +184,50 @@ namespace detail {
 			if( !conn_sliding_.is_connected() ) {
 				states_.trasition( state::default_ );
 			}
+			wnd.redraw();
+		}
+
+	private:
+		void press_left_button(window& wnd, spirea::point_t< std::int32_t > const& pt)
+		{
+			prev_pt_ = pt;
+
+			conn_sliding_ = wnd.connect( window_event::mouse_moved{}, [this](window& wnd, mouse_button, spirea::point_t< std::int32_t > const& now_pt) mutable {
+				auto const rc = size();
+				auto const parent_rc = parent_->size();
+				if constexpr( Direction == scroll_bar_direction::vertical ) {
+					auto top = rc.top + ( now_pt.y - prev_pt_.y );
+					if( top < parent_rc.top ) {
+						top = parent_rc.top;
+					} 
+					if( top + rc.height() > parent_rc.bottom ) {
+						top = parent_rc.bottom - rc.height();
+					}
+					resize( spirea::rect_t< float >{ { rc.left, top }, rc.area() } );
+
+					auto const prev_pos = pos_;
+					pos_ = static_cast< std::uint32_t >( std::floor( top * ( parent_->max_value() - parent_->page_value() ) / ( parent_rc.bottom - rc.height() ) ) );
+					if( pos_ != prev_pos ) {
+						handler_.invoke( scroll_bar_event::scroll{}, pos_, pos_ + parent_->page_value() );
+					}
+				}
+				else {
+					// still not implement horizontal
+				}
+				wnd.redraw();
+				prev_pt_ = now_pt;
+			} );
+
+			conn_finish_sliding_ = wnd.connect( window_event::mouse_button_released{}, [this](window& wnd, mouse_button btn, mouse_button, spirea::point_t< std::int32_t > const&) mutable {
+				if( spirea::enabled( btn, mouse_button::left ) ) {
+					states_.trasition( state::default_ );
+					wnd.redraw();
+
+					conn_sliding_.disconnect();
+					conn_finish_sliding_.disconnect();
+				}
+			} );
+
 			wnd.redraw();
 		}
 	};
@@ -247,16 +261,34 @@ namespace detail {
 			
 			if constexpr( Direction == scroll_bar_direction::vertical ) {
 				thumb_height = thumb_height * style.page_value / style.max_value;
+				if( thumb_height <= style.min_thumb_size ) {
+					thumb_height = style.min_thumb_size;
+				}
 			}
 			else {
 				thumb_width = thumb_width * style.page_value / style.max_value;
+				if( thumb_width <= style.min_thumb_size ) {
+					thumb_width = style.min_thumb_size;
+				}
 			}
 
 			thumb_ = {
 				this,
 				spirea::rect_t< float >{ { rc.left, rc.top }, { thumb_width, thumb_height } }, 
-				default_style, over_style, pressed_style
+				default_style, over_style, pressed_style, options
 			};
+		}
+
+		void show() noexcept
+		{
+			widget_facade::show();
+			thumb_->show();
+		}
+
+		void hide() noexcept
+		{
+			widget_facade::hide();
+			thumb_->hide();
 		}
 
 		std::uint32_t page_value() const noexcept
@@ -268,6 +300,27 @@ namespace detail {
 		{
 			return sd_.style.max_value;
 		}
+
+		void set_values(std::uint32_t page_value, std::uint32_t max_value) noexcept
+		{
+			auto const rc = size();
+			auto const thumb_rc = thumb_->size();
+
+			sd_.style.page_value = page_value;
+			sd_.style.max_value = max_value;
+
+			float thumb_width = rc.width();
+			float thumb_height = rc.height();
+			
+			if constexpr( Direction == scroll_bar_direction::vertical ) {
+				thumb_height = thumb_height * sd_.style.page_value / sd_.style.max_value;
+			}
+			else {
+				thumb_width = thumb_width * sd_.style.page_value / sd_.style.max_value;
+			}
+
+			thumb_->resize( spirea::rect_t{ spirea::point_t{ thumb_rc.left, thumb_rc.top }, { thumb_width, thumb_height } } );
+		} 
 
 		template <typename Event, typename F>
 		spirea::connection connect(Event, F&& f)

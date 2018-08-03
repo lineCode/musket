@@ -25,7 +25,7 @@ add_project_link_arguments(
 	language: 'cpp'
 )
 
-if get_option( 'buildtype' ).startswith( 'release' )
+if get_option( 'buildtype' ).startswith( 'debug' )
     add_project_arguments(
         '-D_DEBUG',
         language: 'cpp'
@@ -45,3 +45,4 @@ incdir = include_directories(
 rc = windows.compile_resources( 'example/example.rc', depend_files: ['example/example.manifest'] )
 
 executable( 'hello_world', 'example/hello_world/hello_world.cpp', rc, include_directories: incdir )
+executable( 'scroll_bar', 'example/scroll_bar/scroll_bar.cpp', rc, include_directories: incdir )

@@ -26,6 +26,7 @@ namespace musket {
 	{
 		std::string str_;
 		spirea::rect_t< float > rc_;
+		spirea::dwrite::text_format format_;
 		spirea::dwrite::text_layout text_;
 		style_data_t< label_style > data_;
 
@@ -42,10 +43,15 @@ namespace musket {
 			rc_{ spirea::rect_traits< decltype( rc_ ) >::construct( rc ) },
 			data_{ style, {} }
 		{
-			auto format = create_text_format( font, ( rc_.bottom - rc_.top ) * 0.7f );
-			text_ = create_text_layout( format, rc_, str );
-			text_->SetTextAlignment( font.align );
-			text_->SetParagraphAlignment( spirea::dwrite::paragraph_alignment::far );
+			format_ = create_text_format( font, ( rc_.bottom - rc_.top ) * 0.7f );
+			format_->SetTextAlignment( font.align );
+			format_->SetParagraphAlignment( spirea::dwrite::paragraph_alignment::far );
+			text_ = create_text_layout( format_, rc_, str );
+		}
+
+		void set_text(std::string_view str)
+		{
+			text_ = create_text_layout( format_, rc_, str );
 		}
 
 		void on_event(window_event::draw, window& wnd)
