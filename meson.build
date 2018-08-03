@@ -5,9 +5,6 @@ project(
 
 windows = import( 'windows' )
 
-cmd_vcpkg__root = run_command( 'cmd', '/c', 'type', '%LOCALAPPDATA%\\vcpkg\\vcpkg.path.txt' )
-vcpkg_root = cmd_vcpkg__root.stdout().strip()
-
 add_project_arguments(
 	'/std:c++17',
 	'/permissive-',
@@ -19,7 +16,6 @@ add_project_arguments(
 
 add_project_link_arguments(
 	'-MACHINE:x64',
-	'-L' + join_paths( vcpkg_root, 'installed/x64-windows-static/lib' ),
 	'kernel32.lib',
 	'user32.lib',
 	'gdi32.lib',
