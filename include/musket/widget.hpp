@@ -41,8 +41,20 @@ namespace detail {
 		};
 
 		std::unique_ptr< T > handle;
-		std::unique_ptr< event_connections< window_events >, connection_deleter > conns;
 		std::weak_ptr< detail::window_context > wnd;
+		std::unique_ptr< event_connections< window_events >, connection_deleter > conns;
+
+		void attach(std::shared_ptr< detail::window_context >& w, event_connections< window_events >&& c)
+		{
+			wnd = w;
+			conns.reset( new event_connections< window_events >{ std::move( c ) } );
+		}
+
+		void detach()
+		{
+			wnd.reset();
+			conns.reset();
+		}
 	};
 
 } // namespace detail
@@ -78,7 +90,17 @@ namespace detail {
 
 		bool is_attached() const noexcept
 		{
-			return !p_->wnd.expired();
+			if( !p_ ) {
+				return false;
+			}
+			return !( p_->wnd.expired() );
+		}
+
+		void detach() noexcept
+		{
+			if( is_attached() ) {
+				p_->detach();
+			}
 		}
 		
 		T* operator->() noexcept
@@ -106,12 +128,23 @@ namespace detail {
 	private:
 		void set_window(std::shared_ptr< detail::window_context >& wnd, event_connections< window_events >&& conns)
 		{
-			p_->conns.reset( new event_connections< window_events >{ std::move( conns ) } );
-			p_->wnd = wnd;
+			p_->attach( wnd, std::move( conns ) );
 		}
 
 		friend class window;
 	};
+
+	template <typename T>
+	inline bool is_attached(widget< T > const& w) noexcept
+	{
+		return w.is_attached();
+	}
+
+	template <typename T>
+	void detach(widget< T >& w) noexcept
+	{
+		w.detach();
+	}
 
 } // namespace musket
 

@@ -192,41 +192,47 @@ namespace detail {
 		{
 			prev_pt_ = pt;
 
-			conn_sliding_ = wnd.connect( window_event::mouse_moved{}, [this](window& wnd, mouse_button, spirea::point_t< std::int32_t > const& now_pt) mutable {
-				auto const rc = size();
-				auto const parent_rc = parent_->size();
-				if constexpr( Direction == scroll_bar_direction::vertical ) {
-					auto top = rc.top + ( now_pt.y - prev_pt_.y );
-					if( top < parent_rc.top ) {
-						top = parent_rc.top;
-					} 
-					if( top + rc.height() > parent_rc.bottom ) {
-						top = parent_rc.bottom - rc.height();
-					}
-					resize( spirea::rect_t< float >{ { rc.left, top }, rc.area() } );
+			conn_sliding_ = wnd.connect( 
+				window_event::mouse_moved{}, 
+				[this](window& wnd, mouse_button, spirea::point_t< std::int32_t > const& now_pt) mutable {
+					auto const rc = size();
+					auto const parent_rc = parent_->size();
+					if constexpr( Direction == scroll_bar_direction::vertical ) {
+						auto top = rc.top + ( now_pt.y - prev_pt_.y );
+						if( top < parent_rc.top ) {
+							top = parent_rc.top;
+						} 
+						if( top + rc.height() > parent_rc.bottom ) {
+							top = parent_rc.bottom - rc.height();
+						}
+						resize( spirea::rect_t< float >{ { rc.left, top }, rc.area() } );
 
-					auto const prev_pos = pos_;
-					pos_ = static_cast< std::uint32_t >( std::floor( top * ( parent_->max_value() - parent_->page_value() ) / ( parent_rc.bottom - rc.height() ) ) );
-					if( pos_ != prev_pos ) {
-						handler_.invoke( scroll_bar_event::scroll{}, pos_, pos_ + parent_->page_value() );
+						auto const prev_pos = pos_;
+						pos_ = static_cast< std::uint32_t >( std::floor( top * ( parent_->max_value() - parent_->page_value() ) / ( parent_rc.bottom - rc.height() ) ) );
+						if( pos_ != prev_pos ) {
+							handler_.invoke( scroll_bar_event::scroll{}, pos_, pos_ + parent_->page_value() );
+						}
 					}
-				}
-				else {
-					// still not implement horizontal
-				}
-				wnd.redraw();
-				prev_pt_ = now_pt;
-			} );
-
-			conn_finish_sliding_ = wnd.connect( window_event::mouse_button_released{}, [this](window& wnd, mouse_button btn, mouse_button, spirea::point_t< std::int32_t > const&) mutable {
-				if( spirea::enabled( btn, mouse_button::left ) ) {
-					states_.trasition( state::default_ );
+					else {
+						// still not implement horizontal
+					}
 					wnd.redraw();
+					prev_pt_ = now_pt;
+				} 
+			);
 
-					conn_sliding_.disconnect();
-					conn_finish_sliding_.disconnect();
-				}
-			} );
+			conn_finish_sliding_ = wnd.connect( 
+				window_event::mouse_button_released{}, 
+				[this](window& wnd, mouse_button btn, mouse_button, spirea::point_t< std::int32_t > const&) mutable {
+					if( spirea::enabled( btn, mouse_button::left ) ) {
+						states_.trasition( state::default_ );
+						wnd.redraw();
+
+						conn_sliding_.disconnect();
+						conn_finish_sliding_.disconnect();
+					}
+				} 
+			);
 
 			wnd.redraw();
 		}
@@ -256,25 +262,9 @@ namespace detail {
 			widget_facade{ rc },
 			sd_{ style, {} }
 		{
-			float thumb_width = spirea::rect_traits< Rect >::width( rc );
-			float thumb_height = spirea::rect_traits< Rect >::height( rc );
-			
-			if constexpr( Direction == scroll_bar_direction::vertical ) {
-				thumb_height = thumb_height * style.page_value / style.max_value;
-				if( thumb_height <= style.min_thumb_size ) {
-					thumb_height = style.min_thumb_size;
-				}
-			}
-			else {
-				thumb_width = thumb_width * style.page_value / style.max_value;
-				if( thumb_width <= style.min_thumb_size ) {
-					thumb_width = style.min_thumb_size;
-				}
-			}
-
 			thumb_ = {
 				this,
-				spirea::rect_t< float >{ { rc.left, rc.top }, { thumb_width, thumb_height } }, 
+				spirea::rect_t< float >{ { rc.left, rc.top }, get_thumb_size( style ) }, 
 				default_style, over_style, pressed_style, options
 			};
 		}
@@ -303,23 +293,12 @@ namespace detail {
 
 		void set_values(std::uint32_t page_value, std::uint32_t max_value) noexcept
 		{
-			auto const rc = size();
 			auto const thumb_rc = thumb_->size();
 
 			sd_.style.page_value = page_value;
 			sd_.style.max_value = max_value;
-
-			float thumb_width = rc.width();
-			float thumb_height = rc.height();
 			
-			if constexpr( Direction == scroll_bar_direction::vertical ) {
-				thumb_height = thumb_height * sd_.style.page_value / sd_.style.max_value;
-			}
-			else {
-				thumb_width = thumb_width * sd_.style.page_value / sd_.style.max_value;
-			}
-
-			thumb_->resize( spirea::rect_t{ spirea::point_t{ thumb_rc.left, thumb_rc.top }, { thumb_width, thumb_height } } );
+			thumb_->resize( spirea::rect_t{ spirea::point_t{ thumb_rc.left, thumb_rc.top }, get_thumb_size( sd_.style ) } );
 		} 
 
 		template <typename Event, typename F>
@@ -351,6 +330,27 @@ namespace detail {
 		void on_event(window_event::attached_widget, window& wnd)
 		{
 			wnd.attach_widget( thumb_ );
+		}
+
+	private:
+		spirea::area_t< float > get_thumb_size(scroll_bar_style const& style) const noexcept
+		{
+			spirea::area_t< float > thumb_sz = size().area();
+
+			if constexpr( Direction == scroll_bar_direction::vertical ) {
+				thumb_sz.height = thumb_sz.height * style.page_value / style.max_value;
+				if( thumb_sz.height <= style.min_thumb_size ) {
+					thumb_sz.height = style.min_thumb_size;
+				}
+			}
+			else {
+				thumb_sz.width = thumb_sz.width * style.page_value / style.max_value;
+				if( thumb_sz.width <= style.min_thumb_size ) {
+					thumb_sz.width = style.min_thumb_size;
+				}
+			}
+
+			return thumb_sz;
 		}
 	};
 
