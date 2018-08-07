@@ -42,7 +42,8 @@ incdir = include_directories(
 	'./submodule/spirea/include'
 )
 
-rc = windows.compile_resources( 'example/example.rc', depend_files: ['example/example.manifest'] )
+example_rc = windows.compile_resources( 'example/example.rc', depend_files: ['example/example.manifest'] )
 
-executable( 'hello_world', 'example/hello_world/hello_world.cpp', rc, include_directories: incdir )
-executable( 'scroll_bar', 'example/scroll_bar/scroll_bar.cpp', rc, include_directories: incdir )
+executable( 'hello_world', 'example/hello_world/hello_world.cpp', example_rc, include_directories: incdir )
+executable( 'scroll_bar', 'example/scroll_bar/scroll_bar.cpp', example_rc, include_directories: incdir )
+executable( 'attributes', 'example/attributes/attributes.cpp', example_rc, include_directories: incdir )

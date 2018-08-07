@@ -11,6 +11,7 @@
 #define MUSKET_WIDGET_LABEL_HPP_
 
 #include "facade.hpp"
+#include "attributes.hpp"
 
 namespace musket {
 
@@ -25,7 +26,6 @@ namespace musket {
 		public widget_facade
 	{
 		std::string str_;
-		spirea::rect_t< float > rc_;
 		spirea::dwrite::text_format format_;
 		spirea::dwrite::text_layout text_;
 		style_data_t< label_style > data_;
@@ -40,18 +40,17 @@ namespace musket {
 		) :
 			widget_facade{ rc },
 			str_{ str.begin(), str.end() },
-			rc_{ spirea::rect_traits< decltype( rc_ ) >::construct( rc ) },
 			data_{ style, {} }
 		{
-			format_ = create_text_format( font, ( rc_.bottom - rc_.top ) * 0.7f );
+			format_ = create_text_format( font );
 			format_->SetTextAlignment( font.align );
-			format_->SetParagraphAlignment( spirea::dwrite::paragraph_alignment::far );
-			text_ = create_text_layout( format_, rc_, str );
+			format_->SetParagraphAlignment( font.paragraph );
+			text_ = create_text_layout( format_, rc, str );
 		}
 
 		void set_text(std::string_view str)
 		{
-			text_ = create_text_layout( format_, rc_, str );
+			text_ = create_text_layout( format_, size(), str );
 		}
 
 		void on_event(window_event::draw, window& wnd)
@@ -76,6 +75,12 @@ namespace musket {
 		void on_event(window_event::recreated_target, window& wnd)
 		{
 			data_.brush = { wnd.render_target(), data_.style.bg_color, data_.style.edge, data_.style.text_color };
+		}
+
+		void on_event(event::auto_resize, window& wnd, spirea::rect_t< float > const& rc)
+		{
+			text_->SetMaxWidth( rc.width() );
+			text_->SetMaxHeight( rc.height() );
 		}
 	};
 

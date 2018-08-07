@@ -181,10 +181,36 @@ namespace detail {
 			auto const height = static_cast< std::uint32_t >( rc.bottom - rc.top );
 
 			spirea::windows::try_hresult( p_->rt->Resize( { width, height } ) );
-			p_->window_events_handler.invoke( window_event::resize{}, *this, spirea::area_t{ width, height } );
-			p_->to_widget_handler.invoke( window_event::resize{}, *this, spirea::area_t{ width, height } );
+
+			auto const dpi = spirea::windows::api::get_dpi_for_window( p_->wnd );
+			constexpr auto default_dpi = spirea::windows::api::user_default_screen_dpi< std::uint32_t >;
+
+			spirea::area_t< std::uint32_t > sz = {
+				width * default_dpi / dpi,
+				height * default_dpi / dpi,
+			};
+
+			p_->window_events_handler.invoke( window_event::resized{}, *this, sz );
+			p_->to_widget_handler.invoke( window_event::resized{}, *this, sz );
 
 			return 0;
+		} );
+
+		p_->wnd.connect( WM_SIZING, [this](spirea::windows::window, WPARAM wparam, LPARAM lparam) -> LRESULT {
+			auto const prev_rc = spirea::rect_traits< spirea::rect_t< float > >::construct( p_->wnd.get_window_rect() );
+			auto const next_rc = spirea::rect_traits< spirea::rect_t< float > >::construct( *reinterpret_cast< RECT* >( lparam ) );
+			auto const dpi = spirea::windows::api::get_dpi_for_window( p_->wnd );
+			constexpr auto default_dpi = spirea::windows::api::user_default_screen_dpi< float >;
+
+			auto const offset = spirea::point_t{ 
+				( next_rc.width() - prev_rc.width() ) * default_dpi / dpi, 
+				( next_rc.height() - prev_rc.height() ) * default_dpi / dpi,
+			};
+
+			p_->to_widget_handler.invoke( window_event::detail::auto_resize{}, *this, offset );
+			p_->to_widget_handler.invoke( window_event::detail::auto_relocation{}, *this, offset );
+
+			return DefWindowProcW( p_->wnd.handle(), WM_SIZING, wparam, lparam );
 		} );
 
 		p_->wnd.connect( WM_DPICHANGED, [this](spirea::windows::window, WPARAM, LPARAM lparam) -> LRESULT {

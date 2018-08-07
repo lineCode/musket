@@ -1,3 +1,12 @@
+//--------------------------------------------------------
+// musket/example/hello_world/hello_world.cpp
+//
+// Copyright (C) 2018 LNSEAB
+//
+// released under the MIT License.
+// https://opensource.org/licenses/MIT
+//--------------------------------------------------------
+
 #include <iostream>
 #include <musket.hpp>
 
@@ -7,15 +16,16 @@ int main()
 		musket::window wnd = {
 			"hello world",
 			spirea::rect_t{ spirea::point_t{ 0, 0 }, { 320, 240 } },
-			musket::rgba_color_t{ 0.3f, 0.3f, 0.3f, 0.0f },
+			musket::rgba_color_t{ 0.2f, 0.2f, 0.2f, 0.0f },
 		};
 
 		musket::font_format const font = {
-			"Yu Gothic",
+			"Yu Gothic", 17.0f,
 			spirea::dwrite::font_weight::normal,
 			spirea::dwrite::font_style::normal,
 			spirea::dwrite::font_stretch::normal,
 			spirea::dwrite::text_alignment::center,
+			spirea::dwrite::paragraph_alignment::center,
 		};
 
 		musket::widget< musket::button > btn = {
@@ -50,7 +60,7 @@ int main()
 		lbl->hide();
 
 		btn->connect( musket::button_event::pressed{}, [lbl](spirea::point_t< std::int32_t > const&) mutable {
-			lbl->show();
+			musket::switch_visibility( lbl );
 		} );
 
 		wnd.attach_widget( btn );

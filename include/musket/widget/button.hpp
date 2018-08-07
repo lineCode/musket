@@ -11,6 +11,7 @@
 #define MUSKET_INCLUDE_MUSKET_WIDGET_BUTTON_HPP_
 
 #include "facade.hpp"
+#include "attributes.hpp"
 
 namespace musket {
 
@@ -78,10 +79,10 @@ namespace button_event {
 			}
 		{
 			auto const sz = size();
-			spirea::dwrite::text_format format = create_text_format( font, ( sz.bottom - sz.top ) * 0.7f );
+			spirea::dwrite::text_format format = create_text_format( font );
 			text_ = create_text_layout( format, sz, str );
 			text_->SetTextAlignment( font.align );
-			text_->SetParagraphAlignment( spirea::dwrite::paragraph_alignment::far );
+			text_->SetParagraphAlignment( font.paragraph );
 		}
 
 		template <typename Event, typename F>
@@ -151,6 +152,12 @@ namespace button_event {
 		{
 			states_.trasition( state::default_ );
 			wnd.redraw();
+		}
+
+		void on_event(event::auto_resize, window& wnd, spirea::rect_t< float > const& rc)
+		{
+			text_->SetMaxWidth( rc.width() );
+			text_->SetMaxHeight( rc.height() );
 		}
 	};
 

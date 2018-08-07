@@ -35,7 +35,7 @@ namespace window_event {
 		using type = void (window&);
 	};
 
-	struct resize
+	struct resized
 	{
 		using type = void (window&, spirea::area_t< std::uint32_t > const&);
 	};
@@ -79,22 +79,38 @@ namespace detail {
 		using type = void (window&, mouse_button);
 	};
 
+namespace detail {
+
+	struct auto_resize
+	{
+		using type = void (window&, spirea::point_t< float > const&);
+	};
+
+	struct auto_relocation
+	{
+		using type = void (window&, spirea::point_t< float > const&);
+	};
+
+} // namespace detail
+
 } // namespace window_event
 
 	using window_events = events_holder<
 		window_event::draw,
 		window_event::recreated_target,
-		window_event::resize,
+		window_event::resized,
 		window_event::attached_widget,
 		window_event::mouse_button_pressed,
 		window_event::mouse_button_released,
-		window_event::detail::mouse_moved_distributor
+		window_event::detail::mouse_moved_distributor,
+		window_event::detail::auto_resize,
+		window_event::detail::auto_relocation
 	>;
 
 	using default_window_events = events_holder<
 		window_event::draw,
 		window_event::recreated_target,
-		window_event::resize,
+		window_event::resized,
 		window_event::attached_widget,
 		window_event::mouse_button_pressed,
 		window_event::mouse_button_released,

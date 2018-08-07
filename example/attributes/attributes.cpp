@@ -1,5 +1,5 @@
 //--------------------------------------------------------
-// musket/example/scroll_bar/scroll_bar.cpp
+// musket/example/attributes/attributes.cpp
 //
 // Copyright (C) 2018 LNSEAB
 //
@@ -8,54 +8,50 @@
 //--------------------------------------------------------
 
 #include <iostream>
-#include <sstream>
 #include <musket.hpp>
 
 int main()
 {
 	try {
 		musket::window wnd = {
-			"scroll bar",
+			"attributes",
 			spirea::rect_t{ spirea::point_t{ 0, 0 }, { 320, 240 } },
-			musket::rgba_color_t{ 0.2f, 0.2f, 0.2f, 0.0f }
+			musket::rgba_color_t{ 0.2f, 0.2f, 0.2f, 0.0f },
 		};
 
 		musket::font_format const font = {
-			"Yu Gothic", 24.0f,
+			"Yu Gothic", 18.0f,
 			spirea::dwrite::font_weight::normal,
 			spirea::dwrite::font_style::normal,
 			spirea::dwrite::font_stretch::normal,
 			spirea::dwrite::text_alignment::center,
-			spirea::dwrite::paragraph_alignment::far,
+			spirea::dwrite::paragraph_alignment::center,
 		};
 
-		auto const client_rc = wnd.client_area_size();
+		auto const rc = wnd.client_area_size();
 
-		musket::widget< musket::label > lbl = {
-			spirea::rect_t{ spirea::point_t{ 40.0f, 80.f }, { 200.0f, 30.0f } },
-			"0, 5", font,
-			musket::label_style{ {}, {}, { 1.0f, 1.0f, 1.0f, 1.0f } }
+		musket::widget< musket::auto_resizer< musket::label > > lbl = {
+			spirea::rect_t{ spirea::point_t{ 20.0f, 30.0f }, { rc.width() - 50.0f, rc.height() - 60.0f } }, 
+			"AutoResize", font,
+			musket::label_style{ 
+				musket::rgba_color_t{ 0.2f, 0.2f, 0.2f, 1.0f }, 
+				musket::edge_property{ { 0.95f, 0.95f, 0.0f, 1.0f } }, 
+				{ 1.0f, 1.0f, 1.0f, 1.0f } 
+			},
 		};
 
-		musket::widget< musket::scroll_bar< musket::axis_flag::vertical > > scroll = {
-			spirea::rect_t{ spirea::point_t{ client_rc.right - 20.0f, 0.0f }, { 20.0f, client_rc.bottom } },
+		musket::widget< musket::auto_scaling_scroll_bar< musket::axis_flag::vertical > > scroll_bar = {
+			spirea::rect_t{ spirea::point_t{ rc.right - 20.0f, 0.0f }, { 20.0f, rc.bottom } },
 			musket::scroll_bar_style{ { 0.4f, 0.4f, 0.4f, 1.0f }, {}, 5u, 100u, 10.0f },
 			musket::scroll_bar_thumb_style{ { 0.65f, 0.65f, 0.65f, 1.0f }, {} },
 			musket::scroll_bar_thumb_style{ { 0.75f, 0.75f, 0.75f, 1.0f }, {} },
 			musket::scroll_bar_thumb_style{ { 0.9f, 0.9f, 0.9f, 1.0f }, {} },
 		};
 
-		scroll->connect( musket::scroll_bar_event::scroll{}, [lbl](std::uint32_t lower, std::uint32_t upper) mutable {
-			std::ostringstream oss;
-			oss << lower << ", " << upper << std::ends;
-			lbl->set_text( oss.str() );
-		} );
-
 		wnd.attach_widget( lbl );
-		wnd.attach_widget( scroll );
+		wnd.attach_widget( scroll_bar );
 
 		wnd.show();
-
 		return musket::loop();
 	}
 	catch( std::exception const& e ) {

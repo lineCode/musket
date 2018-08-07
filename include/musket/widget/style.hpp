@@ -23,21 +23,22 @@ namespace musket {
 	struct font_format
 	{
 		std::string name;
+		float size;
 		spirea::dwrite::font_weight weight;
 		spirea::dwrite::font_style style;
 		spirea::dwrite::font_stretch stretch;
 		spirea::dwrite::text_alignment align;
-		std::optional< float > size = {};
+		spirea::dwrite::paragraph_alignment paragraph;
 	};
 
-	inline spirea::dwrite::text_format create_text_format(font_format const& font, float default_size) 
+	inline spirea::dwrite::text_format create_text_format(font_format const& font) 
 	{
 		spirea::dwrite::text_format format;
 		spirea::windows::try_hresult( context().dwrite->CreateTextFormat(
 			spirea::windows::multibyte_to_widechar( spirea::windows::code_page::utf8, font.name ).c_str(),
 			nullptr,
 			font.weight, font.style, font.stretch,
-			font.size ? *font.size : default_size,
+			font.size,
 			context().locale_name.c_str(), format.pp()
 		) );
 		return format;

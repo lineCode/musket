@@ -16,24 +16,6 @@
 
 namespace musket {
 
-	enum struct scroll_bar_option
-	{
-		none = 0x00,
-		auto_hiding = 0x01,
-	};
-
-} // namespace musket
-
-namespace spirea {
-
-	template <>
-	struct enable_bit_flags_operators< musket::scroll_bar_option >
-	{ };
-
-} // namespace spirea
-
-namespace musket {
-
 namespace scroll_bar_event {
 
 	struct scroll
@@ -46,12 +28,6 @@ namespace scroll_bar_event {
 	using scroll_bar_events = events_holder<
 		scroll_bar_event::scroll
 	>;
-
-	enum struct scroll_bar_direction
-	{
-		vertical,
-		horizontal,
-	};
 
 	struct scroll_bar_style
 	{
@@ -70,7 +46,7 @@ namespace scroll_bar_event {
 
 namespace detail {
 
-	template <typename Parent, scroll_bar_direction Direction>
+	template <typename Parent, axis_flag Direction>
 	class scroll_bar_thumb :
 		public widget_facade
 	{
@@ -92,7 +68,6 @@ namespace detail {
 		spirea::connection conn_finish_sliding_;
 		std::uint32_t pos_ = 0;
 		event_handler< scroll_bar_events > handler_;
-		scroll_bar_option options_;
 
 	public:
 		scroll_bar_thumb(
@@ -100,8 +75,7 @@ namespace detail {
 			spirea::rect_t< float > const& rc,
 			scroll_bar_thumb_style const& default_style,
 			scroll_bar_thumb_style const& over_style,
-			scroll_bar_thumb_style const& pressed_style,
-			scroll_bar_option options
+			scroll_bar_thumb_style const& pressed_style
 		) :
 			widget_facade{ rc },
 			parent_{ parent },
@@ -110,8 +84,7 @@ namespace detail {
 				style_data_type{ default_style, {} }, 
 				style_data_type{ over_style, {} }, 
 				style_data_type{ pressed_style, {} }
-			},
-			options_{ options }
+			}
 		{ }
 
 		~scroll_bar_thumb() noexcept
@@ -123,6 +96,11 @@ namespace detail {
 		spirea::connection connect(Event, F&& f)
 		{
 			return handler_.connect( Event{}, std::forward< F >( f ) );
+		}
+
+		std::uint32_t position() const noexcept
+		{
+			return pos_;
 		}
 
 		void on_event(window_event::draw, window& wnd)
@@ -197,7 +175,7 @@ namespace detail {
 				[this](window& wnd, mouse_button, spirea::point_t< std::int32_t > const& now_pt) mutable {
 					auto const rc = size();
 					auto const parent_rc = parent_->size();
-					if constexpr( Direction == scroll_bar_direction::vertical ) {
+					if constexpr( Direction == axis_flag::vertical ) {
 						auto top = rc.top + ( now_pt.y - prev_pt_.y );
 						if( top < parent_rc.top ) {
 							top = parent_rc.top;
@@ -240,10 +218,12 @@ namespace detail {
 
 } // namespace detail
 
-	template <scroll_bar_direction Direction = scroll_bar_direction::vertical>
+	template <axis_flag Direction>
 	class scroll_bar :
 		public widget_facade
 	{
+		static_assert( Direction == axis_flag::vertical || Direction == axis_flag::horizontal );
+
 		using style_data_type = style_data_t< scroll_bar_style >;
 
 		widget< detail::scroll_bar_thumb< scroll_bar, Direction > > thumb_;
@@ -256,8 +236,7 @@ namespace detail {
 			scroll_bar_style const& style,
 			scroll_bar_thumb_style const& default_style,
 			scroll_bar_thumb_style const& over_style,
-			scroll_bar_thumb_style const& pressed_style,
-			scroll_bar_option options = scroll_bar_option::none
+			scroll_bar_thumb_style const& pressed_style
 		) :
 			widget_facade{ rc },
 			sd_{ style, {} }
@@ -265,7 +244,7 @@ namespace detail {
 			thumb_ = {
 				this,
 				spirea::rect_t< float >{ { rc.left, rc.top }, get_thumb_size( style ) }, 
-				default_style, over_style, pressed_style, options
+				default_style, over_style, pressed_style
 			};
 		}
 
@@ -279,6 +258,24 @@ namespace detail {
 		{
 			widget_facade::hide();
 			thumb_->hide();
+		}
+
+		template <typename Rect>
+		void resize(Rect const& rc) noexcept
+		{
+			widget_facade::resize( rc );
+
+			spirea::point_t< float > pt;
+			if constexpr( Direction == axis_flag::vertical ) {
+				pt.x = rc.left;
+				pt.y = rc.height() * static_cast< float >( thumb_->position() ) / static_cast< float >( max_value() - page_value() );
+			}
+			else {
+				pt.x = rc.width() * static_cast< float >( thumb_->position() ) / static_cast< float >( max_value() - page_value() );
+				pt.y = rc.top;
+			}
+
+			thumb_->resize( spirea::rect_t{ pt, get_thumb_size( sd_.style ) } );
 		}
 
 		std::uint32_t page_value() const noexcept
@@ -337,7 +334,7 @@ namespace detail {
 		{
 			spirea::area_t< float > thumb_sz = size().area();
 
-			if constexpr( Direction == scroll_bar_direction::vertical ) {
+			if constexpr( Direction == axis_flag::vertical ) {
 				thumb_sz.height = thumb_sz.height * style.page_value / style.max_value;
 				if( thumb_sz.height <= style.min_thumb_size ) {
 					thumb_sz.height = style.min_thumb_size;
@@ -353,6 +350,13 @@ namespace detail {
 			return thumb_sz;
 		}
 	};
+
+	template <axis_flag Direction>
+	using auto_scaling_scroll_bar = std::conditional_t<
+		Direction == axis_flag::vertical,
+		auto_relocator< auto_resizer< scroll_bar< Direction >, axis_flag::vertical >, axis_flag::horizontal >,
+		auto_relocator< auto_resizer< scroll_bar< Direction >, axis_flag::horizontal >, axis_flag::vertical >
+	>;
 
 } // namespace musket
 
