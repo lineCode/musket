@@ -141,7 +141,7 @@ namespace detail {
 	}
 
 	template <typename T>
-	void detach(widget< T >& w) noexcept
+	inline void detach(widget< T >& w) noexcept
 	{
 		w.detach();
 	}
