@@ -242,6 +242,12 @@ namespace detail {
 		spirea::windows::api::invalidate_rect( p_->wnd, nullptr, false );
 	}
 
+	inline void window::close() noexcept 
+	{
+		assert( p_ );
+		p_->wnd.close();
+	}
+
 	spirea::rect_t< float > window::client_area_size() const noexcept
 	{
 		auto rc = spirea::rect_traits< spirea::rect_t< float > >::construct( p_->wnd.get_client_rect() );

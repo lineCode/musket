@@ -11,6 +11,7 @@ add_project_arguments(
 	'/utf-8',
 	'/D_UNICODE',
 	'/DUNICODE',
+	'/bigobj',
 	language: 'cpp'
 )
 
@@ -37,15 +38,6 @@ else
     )
 endif
 
-incdir = include_directories(
-	'./include',
-	'./submodule/spirea/include'
-)
-
 if get_option( 'build_examples' )
 	subdir( 'example' )
-endif
-
-if get_option( 'build_tests' )
-	subdir( 'test' )
 endif

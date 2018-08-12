@@ -68,6 +68,7 @@ namespace detail {
 		void show() noexcept;
 		void hide() noexcept;
 		void redraw() const noexcept;
+		void close() noexcept;
 
 		spirea::rect_t< float > client_area_size() const noexcept;
 
