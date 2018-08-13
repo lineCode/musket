@@ -15,11 +15,76 @@
 
 namespace musket {
 
+	class button;
+
 	struct button_style
 	{
 		rgba_color_t bg_color;
 		std::optional< edge_property > edge;
 		rgba_color_t text_color;
+	};
+
+	enum struct button_state : std::uint8_t
+	{
+		default_, over, pressed,
+	};
+
+	template <>
+	class default_style_t< button >
+	{
+		inline static button_style default_ = {
+			{ 0.25f, 0.25f, 0.25f, 1.0f },
+			musket::edge_property{ { 0.5f, 0.5f, 0.5f, 1.0f }, 1.0f },
+			{ 1.0f, 1.0f, 1.0f, 1.0f },
+		};
+
+		inline static button_style over_ = {
+			{ 0.4f, 0.4f, 0.4f, 1.0f },
+			musket::edge_property{ { 0.5f, 0.5f, 0.5f, 1.0f }, 1.0f },
+			{ 1.0f, 1.0f, 1.0f, 1.0f },
+		};
+
+		inline static button_style pressed_ = {
+			{ 0.6f, 0.6f, 0.6f, 1.0f },
+			musket::edge_property{ { 1.0f, 1.0f, 0.0f, 1.0f }, 1.0f },
+			{ 1.0f, 1.0f, 1.0f, 1.0f },
+		};
+
+		inline static std::mutex mtx_;
+
+	public:
+		static void set(button_state state, button_style const& style) noexcept
+		{
+			std::lock_guard lock{ mtx_ };
+
+			switch( state ) {
+			case button_state::default_:
+				default_ = style;
+				break;
+			case button_state::over:
+				over_ = style;
+				break;
+			case button_state::pressed:
+				pressed_ = style;
+				break;
+			}
+		}
+
+		static button_style get(button_state state) noexcept
+		{
+			std::lock_guard lock{ mtx_ };
+
+			switch( state ) {
+			case button_state::default_:
+				return default_;
+			case button_state::over:
+				return over_;
+			case button_state::pressed:
+				return pressed_;
+			}
+
+			return {};
+		}
 	};
 
 namespace button_event {
@@ -44,16 +109,11 @@ namespace button_event {
 	class button :
 		public widget_facade
 	{
-		enum struct state : std::uint8_t
-		{
-			default_, over, pressed,
-		};
-
 		using style_data_type = style_data_t< button_style >;
 
 		using state_machine_type = state_machine< 
-			style_data_type, state, 
-			state::default_, state::over, state::pressed 
+			style_data_type, button_state, 
+			button_state::default_, button_state::over, button_state::pressed 
 		>;
 
 		std::string str_;
@@ -66,23 +126,31 @@ namespace button_event {
 		button(
 			Rect const& rc,
 			std::string_view str, 
-			font_format const& font,
-			button_style const& default_style,
-			button_style const& over_style,
-			button_style const& pressed_style
+			std::optional< text_format > tf = {},
+			std::optional< button_style > default_style = {},
+			std::optional< button_style > over_style = {},
+			std::optional< button_style > pressed_style = {}
 		) :
 			widget_facade{ rc },
 			str_{ str.begin(), str.end() },
 			states_{ 
-				state::default_, 
-				style_data_type{ default_style, {} }, style_data_type{ over_style, {} }, style_data_type{ pressed_style, {} } 
+				button_state::default_, 
+				style_data_type{ 
+					deref_style< button >( default_style, button_state::default_ ), {} 
+				}, 
+				style_data_type{ 
+					deref_style< button >( over_style, button_state::over ), {} 
+				}, 
+				style_data_type{ 
+					deref_style< button >( pressed_style, button_state::pressed ), {} 
+				} 
 			}
 		{
 			auto const sz = size();
-			spirea::dwrite::text_format format = create_text_format( font );
+			spirea::dwrite::text_format format = create_text_format( deref_text_format( tf ) );
+			format->SetTextAlignment( spirea::dwrite::text_alignment::center );
+			format->SetParagraphAlignment( spirea::dwrite::paragraph_alignment::center );
 			text_ = create_text_layout( format, sz, str );
-			text_->SetTextAlignment( font.align );
-			text_->SetParagraphAlignment( font.paragraph );
 		}
 
 		template <typename Event, typename F>
@@ -122,7 +190,7 @@ namespace button_event {
 		void on_event(window_event::mouse_button_pressed, window& wnd, mouse_button btn, mouse_button, spirea::point_t< std::int32_t > const& pt)
 		{
 			if( spirea::enabled( btn, mouse_button::left ) ) {
-				states_.trasition( state::pressed );
+				states_.trasition( button_state::pressed );
 				event_handler_.invoke( button_event::pressed{}, pt );
 				wnd.redraw();
 			}
@@ -131,7 +199,7 @@ namespace button_event {
 		void on_event(window_event::mouse_button_released, window& wnd, mouse_button btn, mouse_button, spirea::point_t< std::int32_t > const& pt)
 		{
 			if( spirea::enabled( btn, mouse_button::left ) ) {
-				states_.trasition( state::default_ );
+				states_.trasition( button_state::default_ );
 				event_handler_.invoke( button_event::released{}, pt );
 				wnd.redraw();
 			}
@@ -140,17 +208,17 @@ namespace button_event {
 		void on_event(window_event::mouse_entered, window& wnd, mouse_button btns)
 		{
 			if( spirea::enabled( btns, mouse_button::left ) ) {
-				states_.trasition( state::pressed );
+				states_.trasition( button_state::pressed );
 			}
 			else {
-				states_.trasition( state::over );
+				states_.trasition( button_state::over );
 			}
 			wnd.redraw();
 		}
 
 		void on_event(window_event::mouse_leaved, window& wnd, mouse_button)
 		{
-			states_.trasition( state::default_ );
+			states_.trasition( button_state::default_ );
 			wnd.redraw();
 		}
 

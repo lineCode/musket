@@ -15,47 +15,17 @@ int main()
 	try {
 		musket::window wnd = {
 			"hello world",
-			spirea::rect_t{ spirea::point_t{ 0, 0 }, { 320, 240 } },
-			musket::rgba_color_t{ 0.2f, 0.2f, 0.2f, 0.0f },
-		};
-
-		musket::font_format const font = {
-			"Yu Gothic", 17.0f,
-			spirea::dwrite::font_weight::normal,
-			spirea::dwrite::font_style::normal,
-			spirea::dwrite::font_stretch::normal,
-			spirea::dwrite::text_alignment::center,
-			spirea::dwrite::paragraph_alignment::center,
+			spirea::rect_t{ spirea::point_t{ 0, 0 }, { 320, 240 } }
 		};
 
 		musket::widget< musket::button > btn = {
 			spirea::rect_t{ spirea::point_t{ 110.0f, 150.0f }, { 100.0f, 30.0f } }, 
-			"Push", font,
-			musket::button_style{ 
-				{ 0.4f, 0.4f, 0.4f, 1.0f }, 
-				musket::edge_property{ { 0.1f, 0.1f, 0.1f, 1.0f } }, 
-				{ 1.0f, 1.0f, 1.0f, 1.0f } 
-			},
-			musket::button_style{ 
-				{ 0.5f, 0.5f, 0.5f, 1.0f }, 
-				musket::edge_property{ { 0.1f, 0.1f, 0.1f, 1.0f } }, 
-				{ 1.0f, 1.0f, 1.0f, 1.0f } 
-			},
-			musket::button_style{ 
-				{ 0.7f, 0.7f, 0.7f, 1.0f }, 
-				musket::edge_property{ { 1.0f, 1.0f, 0.0f, 1.0f } }, 
-				{ 1.0f, 1.0f, 1.0f, 1.0f } 
-			},
+			"Push" 
 		};
 
 		musket::widget< musket::label > lbl = {
 			spirea::rect_t{ spirea::point_t{ 60.0f, 60.0f }, { 200.0f, 30.0f } }, 
-			"hello, world!", font,
-			musket::label_style{
-				{},
-				{},
-				{ 1.0f, 1.0f, 1.0f, 1.0f },
-			}
+			"hello, world!"
 		};
 		lbl->hide();
 

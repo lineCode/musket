@@ -22,6 +22,32 @@ namespace musket {
 		rgba_color_t text_color;
 	};
 
+	class label;
+
+	template <>
+	class default_style_t< label >
+	{
+		inline static label_style style_ = {
+			{}, {},
+			{ 1.0f, 1.0f, 1.0f, 1.0f },
+		};
+
+		inline static std::mutex mtx_;
+
+	public:
+		static void set(label_style const& style) noexcept
+		{
+			std::lock_guard lock{ mtx_ };
+			style_ = style;
+		}
+
+		static label_style get() noexcept
+		{
+			std::lock_guard lock{ mtx_ };
+			return style_;
+		}
+	};
+
 	class label :
 		public widget_facade
 	{
@@ -35,16 +61,16 @@ namespace musket {
 		label(
 			Rect const& rc,
 			std::string_view str,
-			font_format const& font,
-			label_style const& style
+			std::optional< text_format > tf = {},
+			std::optional< label_style > style = {}
 		) :
 			widget_facade{ rc },
 			str_{ str.begin(), str.end() },
-			data_{ style, {} }
+			data_{ deref_style< label >( style ), {} }
 		{
-			format_ = create_text_format( font );
-			format_->SetTextAlignment( font.align );
-			format_->SetParagraphAlignment( font.paragraph );
+			format_ = create_text_format( deref_text_format( tf ) );
+			format_->SetTextAlignment( spirea::dwrite::text_alignment::center );
+			format_->SetParagraphAlignment( spirea::dwrite::paragraph_alignment::center );
 			text_ = create_text_layout( format_, rc, str );
 		}
 

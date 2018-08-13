@@ -33,8 +33,6 @@ namespace scroll_bar_event {
 	{
 		rgba_color_t bg_color;
 		std::optional< edge_property > edge;
-		std::uint32_t page_value;
-		std::uint32_t max_value;
 		float min_thumb_size;
 	};
 
@@ -44,19 +42,85 @@ namespace scroll_bar_event {
 		std::optional< edge_property > edge;
 	};
 
+	enum struct scroll_bar_thumb_state : std::uint8_t
+	{
+		default_, over, pressed,
+	};
+
+	template <axis_flag>
+	class scroll_bar;
+
+	template <axis_flag Axis>
+	class default_style_t< scroll_bar< Axis > >
+	{
+		inline static scroll_bar_style style_ = {
+			{ 0.4f, 0.4f, 0.4f, 1.0f }, {}, 10.0f
+		};
+		inline static scroll_bar_thumb_style thumb_default_ = {
+			{ 0.65f, 0.65f, 0.65f, 1.0f }, {}
+		};
+		inline static scroll_bar_thumb_style thumb_over_ = {
+			{ 0.75f, 0.75f, 0.75f, 1.0f }, {}
+		};
+		inline static scroll_bar_thumb_style thumb_pressed_ = {
+			{ 0.9f, 0.9f, 0.9f, 1.0f }, {}
+		};
+
+		inline static std::mutex mtx_ = {};
+
+	public:
+		static void set(scroll_bar_style const& style) noexcept
+		{
+			std::lock_guard lock{ mtx_ };
+			style_ = style;
+		}
+
+		static void set(scroll_bar_thumb_state state, scroll_bar_thumb_style const& style) noexcept
+		{
+			std::lock_guard lock{ mtx_ };
+			switch( state ) {
+			case scroll_bar_thumb_state::default_:
+				thumb_default_ = style;
+				break;
+			case scroll_bar_thumb_state::over:
+				thumb_over_ = style;
+				break;
+			case scroll_bar_thumb_state::pressed:
+				thumb_pressed_ = style;
+				break;
+			}
+		}
+
+		static scroll_bar_style get() noexcept
+		{
+			std::lock_guard lock{ mtx_ };
+			return style_;
+		}
+
+		static scroll_bar_thumb_style get(scroll_bar_thumb_state state) noexcept
+		{
+			std::lock_guard lock{ mtx_ };
+			switch( state ) {
+			case scroll_bar_thumb_state::default_:
+				return thumb_default_;
+			case scroll_bar_thumb_state::over:
+				return thumb_over_;
+			case scroll_bar_thumb_state::pressed:
+				return thumb_pressed_;
+			}
+
+			return {};
+		}
+	};	
+
 namespace detail {
 
 	template <typename Parent, axis_flag Direction>
 	class scroll_bar_thumb :
 		public widget_facade
 	{
-		enum struct state : std::uint8_t
-		{
-			default_, over, pressed,
-		};
-
+		using state = scroll_bar_thumb_state;
 		using style_data_type = style_data_t< scroll_bar_thumb_style >;
-
 		using state_machine_type = state_machine<
 			style_data_type, state, state::default_, state::over, state::pressed
 		>;
@@ -228,23 +292,31 @@ namespace detail {
 
 		widget< detail::scroll_bar_thumb< scroll_bar, Direction > > thumb_;
 		style_data_type sd_;
+		std::uint32_t page_value_;
+		std::uint32_t max_value_;
 
 	public:
 		template <typename Rect>
 		scroll_bar(
 			Rect const& rc,
-			scroll_bar_style const& style,
-			scroll_bar_thumb_style const& default_style,
-			scroll_bar_thumb_style const& over_style,
-			scroll_bar_thumb_style const& pressed_style
+			std::uint32_t page_v,
+			std::uint32_t max_v,
+			std::optional< scroll_bar_style > style = {},
+			std::optional< scroll_bar_thumb_style > default_style = {},
+			std::optional< scroll_bar_thumb_style > over_style = {},
+			std::optional< scroll_bar_thumb_style > pressed_style = {}
 		) :
 			widget_facade{ rc },
-			sd_{ style, {} }
+			sd_{ deref_style< scroll_bar >( style ), {} },
+			page_value_{ page_v },
+			max_value_{ max_v }
 		{
 			thumb_ = {
 				this,
-				spirea::rect_t< float >{ { rc.left, rc.top }, get_thumb_size( style ) }, 
-				default_style, over_style, pressed_style
+				spirea::rect_t< float >{ { rc.left, rc.top }, get_thumb_size( sd_.style ) }, 
+				deref_style< scroll_bar >( default_style, scroll_bar_thumb_state::default_ ), 
+				deref_style< scroll_bar >( over_style, scroll_bar_thumb_state::over ),
+				deref_style< scroll_bar >( pressed_style, scroll_bar_thumb_state::pressed ) 
 			};
 		}
 
@@ -280,20 +352,25 @@ namespace detail {
 
 		std::uint32_t page_value() const noexcept
 		{
-			return sd_.style.page_value;
+			return page_value_;
 		}
 
 		std::uint32_t max_value() const noexcept
 		{
-			return sd_.style.max_value;
+			return max_value_;
+		}
+
+		std::uint32_t position() const noexcept
+		{
+			return thumb_->position();
 		}
 
 		void set_values(std::uint32_t page_value, std::uint32_t max_value) noexcept
 		{
 			auto const thumb_rc = thumb_->size();
 
-			sd_.style.page_value = page_value;
-			sd_.style.max_value = max_value;
+			page_value_ = page_value;
+			max_value_ = max_value;
 			
 			thumb_->resize( spirea::rect_t{ spirea::point_t{ thumb_rc.left, thumb_rc.top }, get_thumb_size( sd_.style ) } );
 		} 
@@ -335,13 +412,13 @@ namespace detail {
 			spirea::area_t< float > thumb_sz = size().area();
 
 			if constexpr( Direction == axis_flag::vertical ) {
-				thumb_sz.height = thumb_sz.height * style.page_value / style.max_value;
+				thumb_sz.height = thumb_sz.height * page_value() / max_value();
 				if( thumb_sz.height <= style.min_thumb_size ) {
 					thumb_sz.height = style.min_thumb_size;
 				}
 			}
 			else {
-				thumb_sz.width = thumb_sz.width * style.page_value / style.max_value;
+				thumb_sz.width = thumb_sz.width * page_value() / max_value();
 				if( thumb_sz.width <= style.min_thumb_size ) {
 					thumb_sz.width = style.min_thumb_size;
 				}

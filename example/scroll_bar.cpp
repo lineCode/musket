@@ -17,32 +17,21 @@ int main()
 		musket::window wnd = {
 			"scroll bar",
 			spirea::rect_t{ spirea::point_t{ 0, 0 }, { 320, 240 } },
-			musket::rgba_color_t{ 0.2f, 0.2f, 0.2f, 0.0f }
 		};
 
-		musket::font_format const font = {
-			"Yu Gothic", 24.0f,
-			spirea::dwrite::font_weight::normal,
-			spirea::dwrite::font_style::normal,
-			spirea::dwrite::font_stretch::normal,
-			spirea::dwrite::text_alignment::center,
-			spirea::dwrite::paragraph_alignment::far,
-		};
+		musket::text_format tf;
+		tf.size = 24.0f;
 
 		auto const client_rc = wnd.client_area_size();
 
 		musket::widget< musket::label > lbl = {
 			spirea::rect_t{ spirea::point_t{ 40.0f, 80.f }, { 200.0f, 30.0f } },
-			"0, 5", font,
-			musket::label_style{ {}, {}, { 1.0f, 1.0f, 1.0f, 1.0f } }
+			"0, 5", tf
 		};
 
 		musket::widget< musket::scroll_bar< musket::axis_flag::vertical > > scroll = {
 			spirea::rect_t{ spirea::point_t{ client_rc.right - 20.0f, 0.0f }, { 20.0f, client_rc.bottom } },
-			musket::scroll_bar_style{ { 0.4f, 0.4f, 0.4f, 1.0f }, {}, 5u, 100u, 10.0f },
-			musket::scroll_bar_thumb_style{ { 0.65f, 0.65f, 0.65f, 1.0f }, {} },
-			musket::scroll_bar_thumb_style{ { 0.75f, 0.75f, 0.75f, 1.0f }, {} },
-			musket::scroll_bar_thumb_style{ { 0.9f, 0.9f, 0.9f, 1.0f }, {} },
+			5u, 100u
 		};
 
 		scroll->connect( musket::scroll_bar_event::scroll{}, [lbl](std::uint32_t lower, std::uint32_t upper) mutable {

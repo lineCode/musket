@@ -13,6 +13,7 @@
 #include <cassert>
 #include <string>
 #include <optional>
+#include <mutex>
 #include <spirea/windows/d2d1.hpp>
 #include <spirea/windows/dwrite.hpp>
 #include "../context.hpp"
@@ -20,27 +21,50 @@
 
 namespace musket {
 
-	struct font_format
+	struct text_format
 	{
-		std::string name;
-		float size;
-		spirea::dwrite::font_weight weight;
-		spirea::dwrite::font_style style;
-		spirea::dwrite::font_stretch stretch;
-		spirea::dwrite::text_alignment align;
-		spirea::dwrite::paragraph_alignment paragraph;
+		std::string name = "Yu Gothic";
+		float size = 15.0f;
+		spirea::dwrite::font_weight weight = spirea::dwrite::font_weight::normal;
+		spirea::dwrite::font_style style = spirea::dwrite::font_style::normal;
+		spirea::dwrite::font_stretch stretch = spirea::dwrite::font_stretch::normal;
 	};
 
-	inline spirea::dwrite::text_format create_text_format(font_format const& font) 
+	class default_text_format
+	{
+		inline static text_format format_;
+		inline static std::mutex mtx_;
+
+	public:
+		static void set(text_format const& format) noexcept
+		{
+			std::lock_guard lock{ mtx_ };
+			format_ = format;
+		}
+
+		static text_format get() noexcept
+		{
+			std::lock_guard lock{ mtx_ };
+			return format_;
+		}
+	};
+
+	inline text_format deref_text_format(std::optional< text_format > tf) noexcept
+	{
+		return tf ? *tf : default_text_format::get();
+	}
+
+	inline spirea::dwrite::text_format create_text_format(text_format const& tf) 
 	{
 		spirea::dwrite::text_format format;
 		spirea::windows::try_hresult( context().dwrite->CreateTextFormat(
-			spirea::windows::multibyte_to_widechar( spirea::windows::code_page::utf8, font.name ).c_str(),
+			spirea::windows::multibyte_to_widechar( spirea::windows::code_page::utf8, tf.name ).c_str(),
 			nullptr,
-			font.weight, font.style, font.stretch,
-			font.size,
+			tf.weight, tf.style, tf.stretch,
+			tf.size,
 			context().locale_name.c_str(), format.pp()
 		) );
+
 		return format;
 	}
 
@@ -55,6 +79,7 @@ namespace musket {
 			spirea::rect_traits< Rect >::height( rc ), 
 			layout.pp()
 		) );
+
 		return layout;
 	}
 
@@ -251,6 +276,15 @@ namespace appearance_detail {
 	};
 
 	using appear = appearance;
+
+	template <typename Widget>
+	class default_style_t;
+
+	template <typename Widget, typename Style, typename... Args>
+	inline Style deref_style(std::optional< Style > const& style, Args&&... args) noexcept
+	{
+		return style ? *style : default_style_t< Widget >::get( std::forward< Args >( args )... );
+	}
 
 } // namespace musket
 
