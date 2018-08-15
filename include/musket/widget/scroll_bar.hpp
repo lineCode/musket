@@ -250,7 +250,7 @@ namespace detail {
 						resize( spirea::rect_t< float >{ { rc.left, top }, rc.area() } );
 
 						auto const prev_pos = pos_;
-						pos_ = static_cast< std::uint32_t >( std::floor( top * ( parent_->max_value() - parent_->page_value() ) / ( parent_rc.bottom - rc.height() ) ) );
+						pos_ = static_cast< std::uint32_t >( std::floor( ( top - parent_rc.top ) * ( parent_->max_value() - parent_->page_value() ) / ( parent_rc.height() - rc.height() ) ) );
 						if( pos_ != prev_pos ) {
 							handler_.invoke( scroll_bar_event::scroll{}, pos_, pos_ + parent_->page_value() );
 						}
@@ -340,10 +340,10 @@ namespace detail {
 			spirea::point_t< float > pt;
 			if constexpr( Direction == axis_flag::vertical ) {
 				pt.x = rc.left;
-				pt.y = rc.height() * static_cast< float >( thumb_->position() ) / static_cast< float >( max_value() - page_value() );
+				pt.y = rc.top + rc.height() * static_cast< float >( thumb_->position() ) / static_cast< float >( max_value() - page_value() );
 			}
 			else {
-				pt.x = rc.width() * static_cast< float >( thumb_->position() ) / static_cast< float >( max_value() - page_value() );
+				pt.x = rc.left + rc.width() * static_cast< float >( thumb_->position() ) / static_cast< float >( max_value() - page_value() );
 				pt.y = rc.top;
 			}
 
@@ -410,6 +410,10 @@ namespace detail {
 		spirea::area_t< float > get_thumb_size(scroll_bar_style const& style) const noexcept
 		{
 			spirea::area_t< float > thumb_sz = size().area();
+			
+			if( page_value() >= max_value() ) {
+				return thumb_sz;
+			}
 
 			if constexpr( Direction == axis_flag::vertical ) {
 				thumb_sz.height = thumb_sz.height * page_value() / max_value();

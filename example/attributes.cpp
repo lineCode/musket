@@ -14,8 +14,8 @@ int main()
 {
 	try {
 		musket::window wnd = {
-			"attributes",
 			spirea::rect_t{ spirea::point_t{ 0, 0 }, { 320, 240 } },
+			"attributes",
 		};
 
 		musket::text_format tf;

@@ -64,8 +64,8 @@ namespace detail {
 
 		template <typename Rect, typename Color = rgba_color_t, typename T = window_type::overlapped>
 		window(
-			std::string_view caption, 
 			Rect const& rc, 
+			std::string_view caption, 
 			Color const& bg_color = rgba_color_t{ 0.2f, 0.2f, 0.2f, 0.0f }, 
 			T = window_type::overlapped{}
 		);

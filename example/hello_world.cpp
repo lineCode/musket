@@ -14,8 +14,8 @@ int main()
 {
 	try {
 		musket::window wnd = {
-			"hello world",
-			spirea::rect_t{ spirea::point_t{ 0, 0 }, { 320, 240 } }
+			spirea::rect_t{ spirea::point_t{ 0, 0 }, { 320, 240 } },
+			"hello world"
 		};
 
 		musket::widget< musket::button > btn = {

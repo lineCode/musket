@@ -28,7 +28,7 @@ namespace detail {
 		bool mouse_entered = false;
 
 		template <typename Rect, typename Color, typename T>
-		window_context(std::string_view caption, Rect const& rc, Color const& bg_color, T) :
+		window_context(Rect const& rc, std::string_view caption, Color const& bg_color, T) :
 			bg_color{ rgba_color_traits< spirea::d2d1::color_f >::construct( bg_color ) }
 		{ 
 			auto trc = spirea::rect_traits< RECT >::construct( rc );
@@ -146,8 +146,8 @@ namespace detail {
 } // namespace detail
 
 	template <typename Rect, typename Color, typename T>
-	inline window::window(std::string_view caption, Rect const& rc, Color const& bg_color, T) :
-		p_{ std::make_shared< detail::window_context >( caption, rc, bg_color, T{} ) }
+	inline window::window(Rect const& rc, std::string_view caption,  Color const& bg_color, T) :
+		p_{ std::make_shared< detail::window_context >( rc, caption, bg_color, T{} ) }
 	{
 		detail::conect_mouse_events( *this, p_ ); 
 
