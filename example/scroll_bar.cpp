@@ -26,7 +26,7 @@ int main()
 
 		musket::widget< musket::label > lbl = {
 			spirea::rect_t{ spirea::point_t{ 40.0f, 80.f }, { 200.0f, 30.0f } },
-			"0, 3", tf
+			"0, 3", musket::label_property{ tf }
 		};
 
 		musket::widget< musket::scroll_bar< musket::axis_flag::vertical > > scroll = {

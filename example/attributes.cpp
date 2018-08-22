@@ -25,12 +25,15 @@ int main()
 
 		musket::widget< musket::auto_resizer< musket::label > > lbl = {
 			spirea::rect_t{ spirea::point_t{ 20.0f, 30.0f }, { rc.width() - 50.0f, rc.height() - 60.0f } }, 
-			"AutoResize", tf,
-			musket::label_style{ 
-				musket::rgba_color_t{ 0.2f, 0.2f, 0.2f, 1.0f }, 
-				musket::edge_property{ { 0.95f, 0.95f, 0.0f, 1.0f } }, 
-				{ 1.0f, 1.0f, 1.0f, 1.0f } 
-			},
+			"AutoResize", 
+			musket::label_property{ 
+				tf,
+				musket::label_style{ 
+					musket::rgba_color_t{ 0.2f, 0.2f, 0.2f, 1.0f }, 
+					musket::edge_property{ { 0.95f, 0.95f, 0.0f, 1.0f } }, 
+					{ 1.0f, 1.0f, 1.0f, 1.0f } 
+				},
+			}
 		};
 
 		musket::widget< musket::auto_scaling_scroll_bar< musket::axis_flag::vertical > > scroll_bar = {

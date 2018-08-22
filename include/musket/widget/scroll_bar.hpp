@@ -44,7 +44,7 @@ namespace scroll_bar_event {
 
 	enum struct scroll_bar_thumb_state : std::uint8_t
 	{
-		default_, over, pressed,
+		idle, over, pressed,
 	};
 
 	template <axis_flag>
@@ -56,7 +56,7 @@ namespace scroll_bar_event {
 		inline static scroll_bar_style style_ = {
 			{ 0.4f, 0.4f, 0.4f, 1.0f }, {}, 10.0f
 		};
-		inline static scroll_bar_thumb_style thumb_default_ = {
+		inline static scroll_bar_thumb_style thumb_idle_ = {
 			{ 0.65f, 0.65f, 0.65f, 1.0f }, {}
 		};
 		inline static scroll_bar_thumb_style thumb_over_ = {
@@ -79,8 +79,8 @@ namespace scroll_bar_event {
 		{
 			std::lock_guard lock{ mtx_ };
 			switch( state ) {
-			case scroll_bar_thumb_state::default_:
-				thumb_default_ = style;
+			case scroll_bar_thumb_state::idle:
+				thumb_idle_ = style;
 				break;
 			case scroll_bar_thumb_state::over:
 				thumb_over_ = style;
@@ -101,8 +101,8 @@ namespace scroll_bar_event {
 		{
 			std::lock_guard lock{ mtx_ };
 			switch( state ) {
-			case scroll_bar_thumb_state::default_:
-				return thumb_default_;
+			case scroll_bar_thumb_state::idle:
+				return thumb_idle_;
 			case scroll_bar_thumb_state::over:
 				return thumb_over_;
 			case scroll_bar_thumb_state::pressed:
@@ -113,6 +113,14 @@ namespace scroll_bar_event {
 		}
 	};	
 
+	struct scroll_bar_property
+	{
+		std::optional< scroll_bar_style > style;
+		std::optional< scroll_bar_thumb_style > idle_style;
+		std::optional< scroll_bar_thumb_style > over_style;
+		std::optional< scroll_bar_thumb_style > pressed_style;
+	};
+
 namespace detail {
 
 	template <typename Parent, axis_flag Direction>
@@ -122,7 +130,7 @@ namespace detail {
 		using state = scroll_bar_thumb_state;
 		using style_data_type = style_data_t< scroll_bar_thumb_style >;
 		using state_machine_type = state_machine<
-			style_data_type, state, state::default_, state::over, state::pressed
+			style_data_type, state, state::idle, state::over, state::pressed
 		>;
 
 		Parent* parent_;
@@ -137,15 +145,15 @@ namespace detail {
 		scroll_bar_thumb(
 			Parent* parent,
 			spirea::rect_t< float > const& rc,
-			scroll_bar_thumb_style const& default_style,
+			scroll_bar_thumb_style const& idle_style,
 			scroll_bar_thumb_style const& over_style,
 			scroll_bar_thumb_style const& pressed_style
 		) :
 			widget_facade{ rc },
 			parent_{ parent },
 			states_{
-				state::default_,
-				style_data_type{ default_style, {} }, 
+				state::idle,
+				style_data_type{ idle_style, {} }, 
 				style_data_type{ over_style, {} }, 
 				style_data_type{ pressed_style, {} }
 			}
@@ -224,7 +232,7 @@ namespace detail {
 		void on_event(window_event::mouse_leaved, window& wnd, mouse_button)
 		{
 			if( !conn_sliding_.is_connected() ) {
-				states_.trasition( state::default_ );
+				states_.trasition( state::idle );
 			}
 			wnd.redraw();
 		}
@@ -267,7 +275,7 @@ namespace detail {
 				window_event::mouse_button_released{}, 
 				[this](window& wnd, mouse_button btn, mouse_button, spirea::point_t< std::int32_t > const&) mutable {
 					if( spirea::enabled( btn, mouse_button::left ) ) {
-						states_.trasition( state::default_ );
+						states_.trasition( state::idle );
 						wnd.redraw();
 
 						conn_sliding_.disconnect();
@@ -301,22 +309,19 @@ namespace detail {
 			Rect const& rc,
 			std::uint32_t page_v,
 			std::uint32_t max_v,
-			std::optional< scroll_bar_style > style = {},
-			std::optional< scroll_bar_thumb_style > default_style = {},
-			std::optional< scroll_bar_thumb_style > over_style = {},
-			std::optional< scroll_bar_thumb_style > pressed_style = {}
+			scroll_bar_property const& prop = {}
 		) :
 			widget_facade{ rc },
-			sd_{ deref_style< scroll_bar >( style ), {} },
+			sd_{ deref_style< scroll_bar >( prop.style ), {} },
 			page_value_{ page_v },
 			max_value_{ max_v }
 		{
 			thumb_ = {
 				this,
 				spirea::rect_t< float >{ { rc.left, rc.top }, get_thumb_size( sd_.style ) }, 
-				deref_style< scroll_bar >( default_style, scroll_bar_thumb_state::default_ ), 
-				deref_style< scroll_bar >( over_style, scroll_bar_thumb_state::over ),
-				deref_style< scroll_bar >( pressed_style, scroll_bar_thumb_state::pressed ) 
+				deref_style< scroll_bar >( prop.idle_style, scroll_bar_thumb_state::idle ), 
+				deref_style< scroll_bar >( prop.over_style, scroll_bar_thumb_state::over ),
+				deref_style< scroll_bar >( prop.pressed_style, scroll_bar_thumb_state::pressed ) 
 			};
 		}
 

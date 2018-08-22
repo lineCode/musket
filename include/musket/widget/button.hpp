@@ -26,13 +26,13 @@ namespace musket {
 
 	enum struct button_state : std::uint8_t
 	{
-		default_, over, pressed,
+		idle, over, pressed,
 	};
 
 	template <>
 	class default_style_t< button >
 	{
-		inline static button_style default_ = {
+		inline static button_style idle = {
 			{ 0.25f, 0.25f, 0.25f, 1.0f },
 			musket::edge_property{ { 0.5f, 0.5f, 0.5f, 1.0f }, 1.0f },
 			{ 1.0f, 1.0f, 1.0f, 1.0f },
@@ -58,8 +58,8 @@ namespace musket {
 			std::lock_guard lock{ mtx_ };
 
 			switch( state ) {
-			case button_state::default_:
-				default_ = style;
+			case button_state::idle:
+				idle = style;
 				break;
 			case button_state::over:
 				over_ = style;
@@ -75,8 +75,8 @@ namespace musket {
 			std::lock_guard lock{ mtx_ };
 
 			switch( state ) {
-			case button_state::default_:
-				return default_;
+			case button_state::idle:
+				return idle;
 			case button_state::over:
 				return over_;
 			case button_state::pressed:
@@ -85,6 +85,14 @@ namespace musket {
 
 			return {};
 		}
+	};
+
+	struct button_property
+	{
+		std::optional< text_format > text_fmt = {};
+		std::optional< button_style > idle_style = {};
+		std::optional< button_style > over_style = {};
+		std::optional< button_style > pressed_style = {};
 	};
 
 namespace button_event {
@@ -113,7 +121,7 @@ namespace button_event {
 
 		using state_machine_type = state_machine< 
 			style_data_type, button_state, 
-			button_state::default_, button_state::over, button_state::pressed 
+			button_state::idle, button_state::over, button_state::pressed 
 		>;
 
 		std::string str_;
@@ -126,28 +134,25 @@ namespace button_event {
 		button(
 			Rect const& rc,
 			std::string_view str, 
-			std::optional< text_format > tf = {},
-			std::optional< button_style > default_style = {},
-			std::optional< button_style > over_style = {},
-			std::optional< button_style > pressed_style = {}
+			button_property const& prop = {}
 		) :
 			widget_facade{ rc },
 			str_{ str.begin(), str.end() },
 			states_{ 
-				button_state::default_, 
+				button_state::idle, 
 				style_data_type{ 
-					deref_style< button >( default_style, button_state::default_ ), {} 
+					deref_style< button >( prop.idle_style, button_state::idle ), {} 
 				}, 
 				style_data_type{ 
-					deref_style< button >( over_style, button_state::over ), {} 
+					deref_style< button >( prop.over_style, button_state::over ), {} 
 				}, 
 				style_data_type{ 
-					deref_style< button >( pressed_style, button_state::pressed ), {} 
+					deref_style< button >( prop.pressed_style, button_state::pressed ), {} 
 				} 
 			}
 		{
 			auto const sz = size();
-			spirea::dwrite::text_format format = create_text_format( deref_text_format( tf ) );
+			spirea::dwrite::text_format format = create_text_format( deref_text_format( prop.text_fmt ) );
 			format->SetTextAlignment( spirea::dwrite::text_alignment::center );
 			format->SetParagraphAlignment( spirea::dwrite::paragraph_alignment::center );
 			text_ = create_text_layout( format, sz, str );
@@ -199,7 +204,7 @@ namespace button_event {
 		void on_event(window_event::mouse_button_released, window& wnd, mouse_button btn, mouse_button, spirea::point_t< std::int32_t > const& pt)
 		{
 			if( spirea::enabled( btn, mouse_button::left ) ) {
-				states_.trasition( button_state::default_ );
+				states_.trasition( button_state::idle );
 				event_handler_.invoke( button_event::released{}, pt );
 				wnd.redraw();
 			}
@@ -218,7 +223,7 @@ namespace button_event {
 
 		void on_event(window_event::mouse_leaved, window& wnd, mouse_button)
 		{
-			states_.trasition( button_state::default_ );
+			states_.trasition( button_state::idle );
 			wnd.redraw();
 		}
 

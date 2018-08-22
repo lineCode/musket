@@ -48,6 +48,12 @@ namespace musket {
 		}
 	};
 
+	struct label_property
+	{
+		std::optional< text_format > text_fmt;
+		std::optional< label_style > style;
+	};
+
 	class label :
 		public widget_facade
 	{
@@ -61,14 +67,13 @@ namespace musket {
 		label(
 			Rect const& rc,
 			std::string_view str,
-			std::optional< text_format > tf = {},
-			std::optional< label_style > style = {}
+			label_property const& prop = {}
 		) :
 			widget_facade{ rc },
 			str_{ str.begin(), str.end() },
-			data_{ deref_style< label >( style ), {} }
+			data_{ deref_style< label >( prop.style ), {} }
 		{
-			format_ = create_text_format( deref_text_format( tf ) );
+			format_ = create_text_format( deref_text_format( prop.text_fmt ) );
 			format_->SetTextAlignment( spirea::dwrite::text_alignment::center );
 			format_->SetParagraphAlignment( spirea::dwrite::paragraph_alignment::center );
 			text_ = create_text_layout( format_, rc, str );
