@@ -24,6 +24,15 @@ namespace musket {
 	template <typename T>
 	class widget;
 
+namespace widget_event {
+
+	struct detached
+	{
+		using type = void ();
+	};
+
+} // namespace widget_event
+
 namespace detail {
 
 	struct window_context;
@@ -54,6 +63,10 @@ namespace detail {
 		{
 			wnd.reset();
 			conns.reset();
+
+			if constexpr( has_on_event< T, widget_event::detached >::value ) {
+				handle->on_event( widget_event::detached{} );
+			}
 		}
 	};
 
