@@ -14,17 +14,17 @@ int main()
 {
 	try {
 		musket::window wnd = {
-			spirea::rect_t{ spirea::point_t{ 0, 0 }, { 320, 240 } },
+			spirea::rect_t< float >{ { 0, 0 }, { 320, 240 } },
 			"hello world"
 		};
 
 		musket::widget< musket::button > btn = {
-			spirea::rect_t{ spirea::point_t{ 110.0f, 150.0f }, { 100.0f, 30.0f } }, 
+			spirea::rect_t< float >{ { 110.0f, 150.0f }, { 100.0f, 30.0f } }, 
 			"Push" 
 		};
 
 		musket::widget< musket::label > lbl = {
-			spirea::rect_t{ spirea::point_t{ 60.0f, 60.0f }, { 200.0f, 30.0f } }, 
+			spirea::rect_t< float >{ { 60.0f, 60.0f }, { 200.0f, 30.0f } }, 
 			"hello, world!"
 		};
 		lbl->hide();

@@ -14,7 +14,7 @@ int main()
 {
 	try {
 		musket::window wnd = {
-			spirea::rect_t{ spirea::point_t{ 0, 0 }, { 320, 240 } },
+			spirea::rect_t< float >{ { 0, 0 }, { 320, 240 } },
 			"attributes",
 		};
 
@@ -24,7 +24,7 @@ int main()
 		auto const rc = wnd.client_area_size();
 
 		musket::widget< musket::auto_resizer< musket::label > > lbl = {
-			spirea::rect_t{ spirea::point_t{ 20.0f, 30.0f }, { rc.width() - 50.0f, rc.height() - 60.0f } }, 
+			spirea::rect_t< float >{ { 20.0f, 30.0f }, { rc.width() - 50.0f, rc.height() - 60.0f } }, 
 			"AutoResize", 
 			musket::label_property{ 
 				tf,
@@ -37,7 +37,7 @@ int main()
 		};
 
 		musket::widget< musket::auto_scaling_scroll_bar< musket::axis_flag::vertical > > scroll_bar = {
-			spirea::rect_t{ spirea::point_t{ rc.right - 20.0f, 0.0f }, { 20.0f, rc.bottom } },
+			spirea::rect_t< float >{ { rc.right - 20.0f, 0.0f }, { 20.0f, rc.bottom } },
 			5u, 100u
 		};
 
