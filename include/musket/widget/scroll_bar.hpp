@@ -31,14 +31,14 @@ namespace scroll_bar_event {
 
 	struct scroll_bar_style
 	{
-		rgba_color_t bg_color;
+		std::optional< rgba_color_t > bg_color;
 		std::optional< edge_property > edge;
 		float min_thumb_size;
 	};
 
 	struct scroll_bar_thumb_style
 	{
-		rgba_color_t fg_color;
+		std::optional< rgba_color_t > fg_color;
 		std::optional< edge_property > edge;
 	};
 
@@ -54,16 +54,16 @@ namespace scroll_bar_event {
 	class default_style_t< scroll_bar< Axis > >
 	{
 		inline static scroll_bar_style style_ = {
-			{ 0.4f, 0.4f, 0.4f, 1.0f }, {}, 10.0f
+			rgba_color_t{ 0.4f, 0.4f, 0.4f, 1.0f }, {}, 10.0f
 		};
 		inline static scroll_bar_thumb_style thumb_idle_ = {
-			{ 0.65f, 0.65f, 0.65f, 1.0f }, {}
+			rgba_color_t{ 0.65f, 0.65f, 0.65f, 1.0f }, {}
 		};
 		inline static scroll_bar_thumb_style thumb_over_ = {
-			{ 0.75f, 0.75f, 0.75f, 1.0f }, {}
+			rgba_color_t{ 0.75f, 0.75f, 0.75f, 1.0f }, {}
 		};
 		inline static scroll_bar_thumb_style thumb_pressed_ = {
-			{ 0.9f, 0.9f, 0.9f, 1.0f }, {}
+			rgba_color_t{ 0.9f, 0.9f, 0.9f, 1.0f }, {}
 		};
 
 		inline static std::mutex mtx_ = {};
@@ -153,9 +153,9 @@ namespace detail {
 			parent_{ parent },
 			states_{
 				state::idle,
-				style_data_type{ idle_style, {} }, 
-				style_data_type{ over_style, {} }, 
-				style_data_type{ pressed_style, {} }
+				style_data_type{ idle_style }, 
+				style_data_type{ over_style }, 
+				style_data_type{ pressed_style }
 			}
 		{ }
 
@@ -185,20 +185,14 @@ namespace detail {
 			auto const rt = wnd.render_target();
 			auto const& data = states_.get();
 
-			rt->FillRectangle( rc, data.brush[appear::fg] );
-			if( data.style.edge ) {
-				rt->DrawRectangle( rc, data.brush[appear::edge], data.style.edge->size );
-			}
+			data.draw_foreground( rt, rc );
+			data.draw_edge( rt, rc );
 		}
 		
 		void on_event(window_event::recreated_target, window& wnd)
 		{
-			auto create_brushes = [&](style_data_type& sd) {
-				sd.brush = { wnd.render_target(), sd.style.fg_color, sd.style.edge };
-			};
-
 			for( auto& i : states_.data() ) {
-				create_brushes( i );
+				i.recreated_target( wnd.render_target() );
 			}
 		}
 
@@ -312,13 +306,13 @@ namespace detail {
 			scroll_bar_property const& prop = {}
 		) :
 			widget_facade{ rc },
-			sd_{ deref_style< scroll_bar >( prop.style ), {} },
+			sd_{ deref_style< scroll_bar >( prop.style ) },
 			page_value_{ page_v },
 			max_value_{ max_v }
 		{
 			thumb_ = {
 				this,
-				spirea::rect_t< float >{ { rc.left, rc.top }, get_thumb_size( sd_.style ) }, 
+				spirea::rect_t< float >{ { rc.left, rc.top }, get_thumb_size( sd_.get_style() ) }, 
 				deref_style< scroll_bar >( prop.idle_style, scroll_bar_thumb_state::idle ), 
 				deref_style< scroll_bar >( prop.over_style, scroll_bar_thumb_state::over ),
 				deref_style< scroll_bar >( prop.pressed_style, scroll_bar_thumb_state::pressed ) 
@@ -352,7 +346,7 @@ namespace detail {
 				pt.y = rc.top;
 			}
 
-			thumb_->resize( spirea::rect_t{ pt, get_thumb_size( sd_.style ) } );
+			thumb_->resize( spirea::rect_t{ pt, get_thumb_size( sd_.get_style() ) } );
 		}
 
 		std::uint32_t page_value() const noexcept
@@ -395,15 +389,13 @@ namespace detail {
 			auto const rc = spirea::rect_traits< spirea::d2d1::rect_f >::construct( size() );
 			auto const rt = wnd.render_target();
 
-			rt->FillRectangle( rc, sd_.brush[appear::bg] );
-			if( sd_.style.edge ) {
-				rt->DrawRectangle( rc, sd_.brush[appear::edge], sd_.style.edge->size );
-			}
+			sd_.draw_background( rt, rc );
+			sd_.draw_edge( rt, rc );
 		}
 
 		void on_event(window_event::recreated_target, window& wnd)
 		{
-			sd_.brush = { wnd.render_target(), sd_.style.bg_color, sd_.style.edge };
+			sd_.recreated_target( wnd.render_target() );
 		}
 
 		void on_event(window_event::attached_widget, window& wnd)

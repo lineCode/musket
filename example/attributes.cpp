@@ -31,7 +31,7 @@ int main()
 				musket::label_style{ 
 					musket::rgba_color_t{ 0.2f, 0.2f, 0.2f, 1.0f }, 
 					musket::edge_property{ { 0.95f, 0.95f, 0.0f, 1.0f } }, 
-					{ 1.0f, 1.0f, 1.0f, 1.0f } 
+					musket::rgba_color_t{ 1.0f, 1.0f, 1.0f, 1.0f } 
 				},
 			}
 		};

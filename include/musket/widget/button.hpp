@@ -19,9 +19,9 @@ namespace musket {
 
 	struct button_style
 	{
-		rgba_color_t bg_color;
+		std::optional< rgba_color_t > bg_color;
 		std::optional< edge_property > edge;
-		rgba_color_t text_color;
+		std::optional< rgba_color_t > text_color;
 	};
 
 	enum struct button_state : std::uint8_t
@@ -33,21 +33,21 @@ namespace musket {
 	class default_style_t< button >
 	{
 		inline static button_style idle = {
-			{ 0.25f, 0.25f, 0.25f, 1.0f },
+			rgba_color_t{ 0.25f, 0.25f, 0.25f, 1.0f },
 			musket::edge_property{ { 0.5f, 0.5f, 0.5f, 1.0f }, 1.0f },
-			{ 1.0f, 1.0f, 1.0f, 1.0f },
+			rgba_color_t{ 1.0f, 1.0f, 1.0f, 1.0f },
 		};
 
 		inline static button_style over_ = {
-			{ 0.4f, 0.4f, 0.4f, 1.0f },
+			rgba_color_t{ 0.4f, 0.4f, 0.4f, 1.0f },
 			musket::edge_property{ { 0.5f, 0.5f, 0.5f, 1.0f }, 1.0f },
-			{ 1.0f, 1.0f, 1.0f, 1.0f },
+			rgba_color_t{ 1.0f, 1.0f, 1.0f, 1.0f },
 		};
 
 		inline static button_style pressed_ = {
-			{ 0.6f, 0.6f, 0.6f, 1.0f },
+			rgba_color_t{ 0.6f, 0.6f, 0.6f, 1.0f },
 			musket::edge_property{ { 1.0f, 1.0f, 0.0f, 1.0f }, 1.0f },
-			{ 1.0f, 1.0f, 1.0f, 1.0f },
+			rgba_color_t{ 1.0f, 1.0f, 1.0f, 1.0f },
 		};
 
 		inline static std::mutex mtx_;
@@ -141,13 +141,13 @@ namespace button_event {
 			states_{ 
 				button_state::idle, 
 				style_data_type{ 
-					deref_style< button >( prop.idle_style, button_state::idle ), {} 
+					deref_style< button >( prop.idle_style, button_state::idle )
 				}, 
 				style_data_type{ 
-					deref_style< button >( prop.over_style, button_state::over ), {} 
+					deref_style< button >( prop.over_style, button_state::over ) 
 				}, 
 				style_data_type{ 
-					deref_style< button >( prop.pressed_style, button_state::pressed ), {} 
+					deref_style< button >( prop.pressed_style, button_state::pressed )
 				} 
 			}
 		{
@@ -174,21 +174,16 @@ namespace button_event {
 			auto const rt = wnd.render_target();
 			auto const& data = states_.get();
 
-			rt->FillRectangle( rc, data.brush[appear::bg] );
-			if( data.style.edge ) {
-				rt->DrawRectangle( rc, data.brush[appear::edge], data.style.edge->size );
-			}
-			rt->DrawTextLayout( { rc.left, rc.top }, text_.get(), data.brush[appear::text], spirea::d2d1::draw_text_options::clip );
+			data.draw_background( rt, rc );
+			data.draw_edge( rt, rc );
+			data.draw_text( rt, { rc.left, rc.top }, text_ );
 		}
 
 		void on_event(window_event::recreated_target, window& wnd)
 		{
-			auto create_brushes = [&](style_data_t< button_style >& sd) {
-				sd.brush = { wnd.render_target(), sd.style.bg_color, sd.style.edge, sd.style.text_color };
-			};
-
+			auto const rt = wnd.render_target();
 			for( auto& i : states_.data() ) {
-				create_brushes( i );
+				i.recreated_target( rt );
 			}
 		}
 

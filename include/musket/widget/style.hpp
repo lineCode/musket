@@ -83,199 +83,11 @@ namespace musket {
 		return layout;
 	}
 
-	template <typename T>
-	struct is_optional :
-		public std::false_type
-	{ };
-
-	template <typename T>
-	struct is_optional< std::optional< T > > :
-		public std::true_type
-	{ };
-
 	struct edge_property
 	{
 		rgba_color_t color;
 		float size = 1.0f;
 	};
-
-	enum struct appearance : std::uint8_t
-	{
-		fg, bg, edge, text,
-	};
-
-	template <appearance... Elements>
-	class brush_holder
-	{
-		std::array< spirea::d2d1::solid_color_brush, sizeof...( Elements ) > brushes_;
-
-	public:
-		brush_holder() = default;
-
-		template <typename... Colors>
-		brush_holder(spirea::d2d1::render_target const& rt, Colors const&... colors)
-		{
-			static_assert( sizeof...( Elements ) == sizeof...( Colors ) );
-			( ..., assign_brush( Elements, rt, colors ) );
-		}
-
-		auto operator[](appearance n) const noexcept
-		{
-			auto const i = index_of( n );
-			assert( i < sizeof...( Elements ) );
-			return brushes_[i].get();
-		}
-
-	private:
-		template <typename Color>
-		void assign_brush(appearance n, spirea::d2d1::render_target const& rt, Color const& c)
-		{
-			if constexpr( std::is_same_v< Color, edge_property > ) {
-				auto const color = rgba_color_traits< spirea::d2d1::color_f >::construct( c.color );
-				rt->CreateSolidColorBrush( color, brushes_[index_of( n )].pp() ); 
-			}
-			else if constexpr( std::is_same_v< Color, std::optional< edge_property > > ) {
-				if( c ) {
-					auto const color = rgba_color_traits< spirea::d2d1::color_f >::construct( c->color );
-					rt->CreateSolidColorBrush( color, brushes_[index_of( n )].pp() ); 
-				}
-			}
-			else if constexpr( is_optional< Color >::value ) {
-				if( c ) {
-					auto const color = rgba_color_traits< spirea::d2d1::color_f >::construct( *c );
-					rt->CreateSolidColorBrush( color, brushes_[index_of( n )].pp() ); 
-				}
-			}
-			else {
-				auto const color = rgba_color_traits< spirea::d2d1::color_f >::construct( c );
-				rt->CreateSolidColorBrush( color, brushes_[index_of( n )].pp() ); 
-			}
-		}
-
-		static constexpr std::size_t index_of(appearance n) noexcept
-		{
-			std::size_t i = 0;
-			( ( ( n != Elements ) && ++i ) && ... );
-			return i;
-		}
-	};
-
-namespace appearance_detail {
-
-	template <typename T, typename Member>
-	constexpr appearance make_appearance(T v, Member) noexcept
-	{
-		return static_cast< appearance >( v );
-	}
-
-	constexpr auto invalid_appearance = static_cast< appearance >( std::numeric_limits< std::underlying_type_t< appearance > >::max() );
-
-	template <typename StyleType, typename = void>
-	struct has_fg_color
-	{ 
-		static constexpr auto value = invalid_appearance;
-	};
-	
-	template <typename StyleType>
-	struct has_fg_color< StyleType, std::void_t< decltype( std::declval< StyleType >().fg_color ) > >
-	{ 
-		static constexpr auto value = make_appearance( appearance::fg, decltype( std::declval< StyleType >().fg_color ){} );
-	};
-
-	template <typename StyleType, typename = void>
-	struct has_bg_color
-	{ 
-		static constexpr auto value = invalid_appearance;
-	};
-	
-	template <typename StyleType>
-	struct has_bg_color< StyleType, std::void_t< decltype( std::declval< StyleType >().bg_color ) > >
-	{ 
-		static constexpr auto value = make_appearance( appearance::bg, decltype( std::declval< StyleType >().bg_color ){} );
-	};
-
-	template <typename StyleType, typename = void>
-	struct has_edge
-	{ 
-		static constexpr auto value = invalid_appearance;
-	};
-	
-	template <typename StyleType>
-	struct has_edge< StyleType, std::void_t< decltype( std::declval< StyleType >().edge ) > >
-	{ 
-		static constexpr auto value = make_appearance( appearance::edge, decltype( std::declval< StyleType >().edge ){} );
-	};
-
-	template <typename StyleType, typename = void>
-	struct has_text_color
-	{ 
-		static constexpr auto value = invalid_appearance;
-	};
-	
-	template <typename StyleType>
-	struct has_text_color< StyleType, std::void_t< decltype( std::declval< StyleType >().text_color ) > >
-	{ 
-		static constexpr auto value = make_appearance( appearance::text, decltype( std::declval< StyleType >().text_color ){} );
-	};
-	
-	template <typename...>
-	struct has_appearance_holder
-	{ };
-
-	template <typename StyleType>
-	using has_appearance_holder_t = has_appearance_holder<
-		has_fg_color< StyleType >,
-		has_bg_color< StyleType >,
-		has_edge< StyleType >,
-		has_text_color< StyleType >
-	>;
-
-	template <appearance...>
-	struct appearance_holder
-	{ };
-
-	template <typename StyleType, typename Init, typename Elems, typename = void>
-	struct make_brush_holder_impl;
-
-	template <typename StyleType, typename Result>
-	struct make_brush_holder_impl< StyleType, Result, appearance_holder<>, void >
-	{
-		using type = Result;
-	};
-
-	template <typename StyleType, typename Result, appearance Val, appearance... Rest>
-	struct make_brush_holder_impl< StyleType, Result, appearance_holder< Val, Rest... >, std::enable_if_t< Val == invalid_appearance > >
-	{
-		using type = typename make_brush_holder_impl< StyleType, Result, appearance_holder< Rest... > >::type;
-	};
-
-	template <typename StyleType, appearance... V, appearance Val, appearance... Rest>
-	struct make_brush_holder_impl< StyleType, brush_holder< V... >, appearance_holder< Val, Rest... >, std::enable_if_t< Val != invalid_appearance > >
-	{
-		using type = typename make_brush_holder_impl< StyleType, brush_holder< V..., Val >, appearance_holder< Rest... > >::type;
-	};
-	
-} // namespace appearance_detail
-
-	template <typename StyleType, typename = appearance_detail::has_appearance_holder_t< StyleType >>
-	struct make_brush_holder;
-
-	template <typename StyleType, typename... Elems>
-	struct make_brush_holder< StyleType, appearance_detail::has_appearance_holder< Elems... > >
-	{
-		using type = typename appearance_detail::make_brush_holder_impl<
-			StyleType, brush_holder<>, appearance_detail::appearance_holder< Elems::value... >
-		>::type;
-	};
-
-	template <typename StyleType>
-	struct style_data_t
-	{
-		StyleType style;
-		typename make_brush_holder< StyleType >::type brush;
-	};
-
-	using appear = appearance;
 
 	template <typename Widget>
 	class default_style_t;
@@ -285,6 +97,247 @@ namespace appearance_detail {
 	{
 		return style ? *style : default_style_t< Widget >::get( std::forward< Args >( args )... );
 	}
+
+namespace style_detail {
+
+	enum struct location : std::uint8_t
+	{
+		none, bg, fg, edge, text,
+	};
+
+	template <typename StyleType, typename = void>
+	struct has_fg_color
+	{
+		static constexpr auto value = location::none;
+	};
+
+	template <typename StyleType>
+	struct has_fg_color< StyleType, std::void_t< decltype( std::declval< StyleType >().fg_color ) > >
+	{
+		static constexpr auto value = location::fg;
+	};
+
+	template <typename StyleType, typename = void>
+	struct has_bg_color
+	{
+		static constexpr auto value = location::none;
+	};
+
+	template <typename StyleType>
+	struct has_bg_color< StyleType, std::void_t< decltype( std::declval< StyleType >().bg_color ) > >
+	{
+		static constexpr auto value = location::bg;
+	};
+
+	template <typename StyleType, typename = void>
+	struct has_edge
+	{
+		static constexpr auto value = location::none;
+	};
+
+	template <typename StyleType>
+	struct has_edge< StyleType, std::void_t< decltype( std::declval< StyleType >().edge ) > >
+	{
+		static constexpr auto value = location::edge;
+	};
+
+	template <typename StyleType, typename = void>
+	struct has_text_color
+	{
+		static constexpr auto value = location::none;
+	};
+
+	template <typename StyleType>
+	struct has_text_color< StyleType, std::void_t< decltype( std::declval< StyleType >().text_color ) > >
+	{
+		static constexpr auto value = location::text;
+	};
+
+	template <location...>
+	struct location_holder
+	{ };
+
+	template <typename StyleType>
+	using has_location_holder_t = location_holder<
+		has_fg_color< StyleType >::value,
+		has_bg_color< StyleType >::value,
+		has_edge< StyleType >::value,
+		has_text_color< StyleType >::value
+	>;
+
+	template <typename Result, typename Src, typename = void>
+	struct make_location_holder_impl;
+
+	template <typename Result>
+	struct make_location_holder_impl< Result, location_holder<>, void >
+	{
+		using type = Result;
+	};
+
+	template <typename Result, location... Rest>
+	struct make_location_holder_impl< Result, location_holder< location::none, Rest... >, void >
+	{
+		using type = typename make_location_holder_impl<
+			Result, location_holder< Rest... >
+		>::type;
+	};
+
+	template <location... Locs, location Loc, location... Rest>
+	struct make_location_holder_impl< 
+		location_holder< Locs... >, 
+		location_holder< Loc, Rest... >, 
+		std::enable_if_t< Loc != location::none >
+	>
+	{
+		using type = typename make_location_holder_impl<
+			location_holder< Locs..., Loc >,
+			location_holder< Rest... >
+		>::type;
+	};
+
+	template <typename StyleType>
+	using make_location_holder = typename make_location_holder_impl<
+		location_holder<>,
+		has_location_holder_t< StyleType >
+	>::type;
+
+	template <location Loc>
+	class style_adapter;
+
+	template <>
+	class style_adapter< location::fg >
+	{
+		spirea::d2d1::solid_color_brush brush_;
+
+	protected:
+		template <typename StyleType>
+		void recreated_target(spirea::d2d1::render_target const& rt, StyleType const& style)
+		{
+			if( !style.fg_color ) {
+				return;
+			}
+			auto const color = rgba_color_traits< spirea::d2d1::color_f >::construct( *style.fg_color );
+			rt->CreateSolidColorBrush( color, brush_.pp() );
+		}
+
+	public:
+		void draw_foreground(spirea::d2d1::render_target const& rt, spirea::d2d1::rect_f const& rc) const
+		{
+			if( !brush_ ) {
+				return;
+			}
+			rt->FillRectangle( rc, brush_.get() );
+		}
+	};
+
+	template <>
+	class style_adapter< location::bg >
+	{
+		spirea::d2d1::solid_color_brush brush_;
+
+	protected:
+		template <typename StyleType>
+		void recreated_target(spirea::d2d1::render_target const& rt, StyleType const& style)
+		{
+			if( !style.bg_color ) {
+				return;
+			}
+			auto const color = rgba_color_traits< spirea::d2d1::color_f >::construct( *style.bg_color );
+			rt->CreateSolidColorBrush( color, brush_.pp() );
+		}
+
+	public:
+		void draw_background(spirea::d2d1::render_target const& rt, spirea::d2d1::rect_f const& rc) const
+		{
+			if( !brush_ ) {
+				return;
+			}
+			rt->FillRectangle( rc, brush_.get() );
+		}
+	};
+
+	template <>
+	class style_adapter< location::edge >
+	{
+		spirea::d2d1::solid_color_brush brush_;
+		float sz_;
+
+	protected:
+		template <typename StyleType>
+		void recreated_target(spirea::d2d1::render_target const& rt, StyleType const& style)
+		{
+			if( !style.edge ) {
+				return;
+			}
+			auto const color = rgba_color_traits< spirea::d2d1::color_f >::construct( style.edge->color );
+			rt->CreateSolidColorBrush( color, brush_.pp() );
+			sz_ = style.edge->size;
+		}
+
+	public:
+		void draw_edge(spirea::d2d1::render_target const& rt, spirea::d2d1::rect_f const& rc) const
+		{
+			if( !brush_ ) {
+				return;
+			}
+			rt->DrawRectangle( rc, brush_.get(), sz_ );
+		}
+	};
+
+	template <>
+	class style_adapter< location::text >
+	{
+		spirea::d2d1::solid_color_brush brush_;
+
+	protected:
+		template <typename StyleType>
+		void recreated_target(spirea::d2d1::render_target const& rt, StyleType const& style)
+		{
+			if( !style.text_color ) {
+				return;
+			}
+			auto const color = rgba_color_traits< spirea::d2d1::color_f >::construct( *style.text_color );
+			rt->CreateSolidColorBrush( color, brush_.pp() );
+		}
+
+	public:
+		void draw_text(spirea::d2d1::render_target const& rt, spirea::d2d1::point_2f const& pt, spirea::dwrite::text_layout const& layout) const
+		{
+			if( !brush_ ) {
+				return;
+			}
+			rt->DrawTextLayout( pt, layout.get(), brush_.get(), spirea::d2d1::draw_text_options::clip );
+		}
+	};
+
+} // namespace style_detail
+
+	template <typename StyleType, typename = style_detail::make_location_holder< StyleType >>
+	class style_data_t;
+
+	template <typename StyleType, style_detail::location... Locs>
+	class style_data_t< StyleType, style_detail::location_holder< Locs... > > :
+		public style_detail::style_adapter< Locs >...
+	{
+		StyleType style_;
+
+	public:
+		style_data_t() = default;
+
+		style_data_t(StyleType const& style) :
+			style_{ style }
+		{ }
+
+		StyleType const& get_style() const noexcept
+		{
+			return style_;
+		}
+
+		void recreated_target(spirea::d2d1::render_target const& rt)
+		{
+			( ..., style_detail::style_adapter< Locs >::recreated_target( rt, style_ ) );
+		}
+	};
 
 } // namespace musket
 
