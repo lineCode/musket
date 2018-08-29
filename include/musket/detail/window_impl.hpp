@@ -238,7 +238,7 @@ namespace detail {
 	inline void window::hide() noexcept
 	{
 		assert( p_ );
-		p_->wnd.show();
+		p_->wnd.hide();
 	}
 
 	inline void window::redraw() const noexcept
