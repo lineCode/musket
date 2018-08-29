@@ -181,7 +181,7 @@ namespace detail {
 				return;
 			}
 
-			auto const rc = spirea::rect_traits< spirea::d2d1::rect_f >::construct( size() );
+			auto const rc = spirea::rect_traits< spirea::d2d1::rect_f >::construct( this->size() );
 			auto const rt = wnd.render_target();
 			auto const& data = states_.get();
 
@@ -239,7 +239,7 @@ namespace detail {
 			conn_sliding_ = wnd.connect( 
 				window_event::mouse_moved{}, 
 				[this](window& wnd, mouse_button, spirea::point_t< std::int32_t > const& now_pt) mutable {
-					auto const rc = size();
+					auto const rc = this->size();
 					auto const parent_rc = parent_->size();
 					if constexpr( Direction == axis_flag::vertical ) {
 						auto top = rc.top + ( now_pt.y - prev_pt_.y );
@@ -258,7 +258,20 @@ namespace detail {
 						}
 					}
 					else {
-						// still not implement horizontal
+						auto left = rc.left + ( now_pt.x - prev_pt_.x );
+						if( left < parent_rc.left ) {
+							left = parent_rc.left;
+						}
+						if( left + rc.width() > parent_rc.right ) {
+							left = parent_rc.right - rc.width();
+						}
+						resize( spirea::rect_t< float >{ { left, rc.top }, rc.area() } );
+
+						auto const prev_pos = pos_;
+						pos_ = static_cast< std::uint32_t >( std::floor( ( left - parent_rc.left ) * ( parent_->max_value() - parent_->page_value() ) / ( parent_rc.width() - rc.width() ) ) );
+						if( pos_ != prev_pos ) {
+							handler_.invoke( scroll_bar_event::scroll{}, pos_, pos_ + parent_->page_value() );
+						}
 					}
 					wnd.redraw();
 					prev_pt_ = now_pt;

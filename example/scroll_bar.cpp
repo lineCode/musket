@@ -25,12 +25,20 @@ int main()
 		auto const client_rc = wnd.client_area_size();
 
 		musket::widget< musket::label > lbl = {
-			spirea::rect_t< float >{ { 40.0f, 80.f }, { 200.0f, 30.0f } },
+			spirea::rect_t< float >{ { 40.0f, 50.f }, { 200.0f, 30.0f } },
+			"0, 3", musket::label_property{ tf }
+		};
+		musket::widget< musket::label > hlbl = {
+			spirea::rect_t< float >{ { 40.0f, 100.f }, { 200.0f, 30.0f } },
 			"0, 3", musket::label_property{ tf }
 		};
 
 		musket::widget< musket::scroll_bar< musket::axis_flag::vertical > > scroll = {
 			spirea::rect_t< float >{ { client_rc.right - 20.0f, 0.0f }, { 20.0f, client_rc.bottom } },
+			3u, 100u
+		};
+		musket::widget< musket::scroll_bar< musket::axis_flag::horizontal > > hscroll = {
+			spirea::rect_t< float >{ { 0.0f, client_rc.bottom - 20.0f }, { client_rc.right - 22.0f, 20.0f } },
 			3u, 100u
 		};
 
@@ -40,8 +48,16 @@ int main()
 			lbl->set_text( oss.str() );
 		} );
 
+		hscroll->connect( musket::scroll_bar_event::scroll{}, [hlbl](std::uint32_t lower, std::uint32_t upper) mutable {
+			std::ostringstream oss;
+			oss << lower << ", " << upper << std::ends;
+			hlbl->set_text( oss.str() );
+		} );
+
 		wnd.attach_widget( lbl );
+		wnd.attach_widget( hlbl );
 		wnd.attach_widget( scroll );
+		wnd.attach_widget( hscroll );
 
 		wnd.show();
 
