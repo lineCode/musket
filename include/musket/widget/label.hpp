@@ -76,7 +76,7 @@ namespace musket {
 			format_ = create_text_format( deref_text_format( prop.text_fmt ) );
 			format_->SetTextAlignment( spirea::dwrite::text_alignment::center );
 			format_->SetParagraphAlignment( spirea::dwrite::paragraph_alignment::center );
-			text_ = create_text_layout( format_, rc, str );
+			text_ = create_text_layout( format_, this->size(), str );
 		}
 
 		void set_text(std::string_view str)
@@ -86,11 +86,11 @@ namespace musket {
 
 		void on_event(window_event::draw, window& wnd)
 		{
-			if( !is_visible() ) {
+			if( !this->is_visible() ) {
 				return;
 			}
 
-			auto const rc = spirea::rect_traits< spirea::d2d1::rect_f >::construct( size() );
+			auto const rc = spirea::rect_traits< spirea::d2d1::rect_f >::construct( this->size() );
 			auto const rt = wnd.render_target();
 
 			data_.draw_background( rt, rc );

@@ -151,11 +151,10 @@ namespace button_event {
 				} 
 			}
 		{
-			auto const sz = size();
 			spirea::dwrite::text_format format = create_text_format( deref_text_format( prop.text_fmt ) );
 			format->SetTextAlignment( spirea::dwrite::text_alignment::center );
 			format->SetParagraphAlignment( spirea::dwrite::paragraph_alignment::center );
-			text_ = create_text_layout( format, sz, str );
+			text_ = create_text_layout( format, this->size(), str );
 		}
 
 		template <typename Event, typename F>
@@ -166,11 +165,11 @@ namespace button_event {
 
 		void on_event(window_event::draw, window& wnd)
 		{
-			if( !is_visible() ) {
+			if( !this->is_visible() ) {
 				return;
 			}
 
-			auto const rc = spirea::rect_traits< spirea::d2d1::rect_f >::construct( size() );
+			auto const rc = spirea::rect_traits< spirea::d2d1::rect_f >::construct( this->size() );
 			auto const rt = wnd.render_target();
 			auto const& data = states_.get();
 
