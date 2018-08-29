@@ -25,6 +25,11 @@ namespace musket {
 
 namespace window_event {
 
+	struct idle
+	{
+		using type = void (window&);
+	};
+
 	struct draw
 	{
 		using type = void (window&);
@@ -96,6 +101,7 @@ namespace detail {
 } // namespace window_event
 
 	using window_events = events_holder<
+		window_event::idle,
 		window_event::draw,
 		window_event::recreated_target,
 		window_event::resized,
@@ -108,6 +114,7 @@ namespace detail {
 	>;
 
 	using default_window_events = events_holder<
+		window_event::idle,
 		window_event::draw,
 		window_event::recreated_target,
 		window_event::resized,

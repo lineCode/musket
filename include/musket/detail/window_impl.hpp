@@ -222,6 +222,11 @@ namespace detail {
 
 			return 0;
 		} );
+
+		p_->wnd.connect_idle( [this](spirea::windows::window) {
+			p_->window_events_handler.invoke( window_event::idle{}, *this );
+			p_->to_widget_handler.invoke( window_event::idle{}, *this );
+		} );
 	}
 
 	inline void window::show() noexcept
