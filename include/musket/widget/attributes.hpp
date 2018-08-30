@@ -37,7 +37,7 @@ namespace event {
 		using Widget::Widget;
 		using Widget::on_event;
 
-		void on_event(window_event::detail::auto_resize, window& wnd, spirea::point_t< float > const& offset)
+		void on_event(event::detail::auto_resize, window& wnd, spirea::point_t< float > const& offset)
 		{
 			auto rc = this->size();
 
@@ -70,7 +70,7 @@ namespace event {
 		using Widget::Widget;
 		using Widget::on_event;
 
-		void on_event(window_event::detail::auto_relocation, window& wnd, spirea::point_t< float > const& offset)
+		void on_event(event::detail::auto_relocation, window& wnd, spirea::point_t< float > const& offset)
 		{
 			auto rc = this->size();
 			auto const width = rc.width();

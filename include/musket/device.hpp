@@ -25,6 +25,8 @@ namespace musket {
 		xbutton2 = MK_XBUTTON2,
 	};
 
+	using cursor_position = spirea::point_t< std::int32_t >;
+
 } // namespace musket
 
 namespace spirea {

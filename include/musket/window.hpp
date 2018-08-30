@@ -48,6 +48,30 @@ namespace detail {
 
 } // namespace detail
 
+	using window_events = events_holder<
+		event::idle,
+		event::draw,
+		event::recreated_target,
+		event::resized,
+		event::mouse_button_pressed,
+		event::mouse_button_released,
+		event::detail::mouse_moved_distributor,
+		event::detail::auto_resize,
+		event::detail::auto_relocation
+	>;
+
+	using default_window_events = events_holder<
+		event::idle,
+		event::draw,
+		event::recreated_target,
+		event::resized,
+		event::mouse_button_pressed,
+		event::mouse_button_released,
+		event::mouse_entered,
+		event::mouse_leaved,
+		event::mouse_moved
+	>;
+
 	template <typename>
 	class widget;
 	

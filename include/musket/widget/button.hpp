@@ -99,11 +99,13 @@ namespace button_event {
 
 	struct pressed
 	{
+		template <typename>
 		using type = void (spirea::point_t< std::int32_t > const&);
 	};
 
 	struct released
 	{
+		template <typename>
 		using type = void (spirea::point_t< std::int32_t > const&);
 	};
 
@@ -127,7 +129,7 @@ namespace button_event {
 		std::string str_;
 		state_machine_type states_;
 		spirea::dwrite::text_layout text_;
-		event_handler< button_events > event_handler_;
+		event_handler< button, button_events > event_handler_;
 
 	public:
 		template <typename Rect>
@@ -163,7 +165,7 @@ namespace button_event {
 			return event_handler_.connect( Event{}, std::forward< F >( f ) );
 		}
 
-		void on_event(window_event::draw, window& wnd)
+		void on_event(event::draw, window& wnd)
 		{
 			if( !this->is_visible() ) {
 				return;
@@ -178,7 +180,7 @@ namespace button_event {
 			data.draw_text( rt, { rc.left, rc.top }, text_ );
 		}
 
-		void on_event(window_event::recreated_target, window& wnd)
+		void on_event(event::recreated_target, window& wnd)
 		{
 			auto const rt = wnd.render_target();
 			for( auto& i : states_.data() ) {
@@ -186,7 +188,7 @@ namespace button_event {
 			}
 		}
 
-		void on_event(window_event::mouse_button_pressed, window& wnd, mouse_button btn, mouse_button, spirea::point_t< std::int32_t > const& pt)
+		void on_event(event::mouse_button_pressed, window& wnd, mouse_button btn, mouse_button, spirea::point_t< std::int32_t > const& pt)
 		{
 			if( spirea::enabled( btn, mouse_button::left ) ) {
 				states_.trasition( button_state::pressed );
@@ -195,7 +197,7 @@ namespace button_event {
 			}
 		}
 
-		void on_event(window_event::mouse_button_released, window& wnd, mouse_button btn, mouse_button, spirea::point_t< std::int32_t > const& pt)
+		void on_event(event::mouse_button_released, window& wnd, mouse_button btn, mouse_button, spirea::point_t< std::int32_t > const& pt)
 		{
 			if( spirea::enabled( btn, mouse_button::left ) ) {
 				states_.trasition( button_state::idle );
@@ -204,7 +206,7 @@ namespace button_event {
 			}
 		}
 
-		void on_event(window_event::mouse_entered, window& wnd, mouse_button btns)
+		void on_event(event::mouse_entered, window& wnd, mouse_button btns)
 		{
 			if( spirea::enabled( btns, mouse_button::left ) ) {
 				states_.trasition( button_state::pressed );
@@ -215,7 +217,7 @@ namespace button_event {
 			wnd.redraw();
 		}
 
-		void on_event(window_event::mouse_leaved, window& wnd, mouse_button)
+		void on_event(event::mouse_leaved, window& wnd, mouse_button)
 		{
 			states_.trasition( button_state::idle );
 			wnd.redraw();

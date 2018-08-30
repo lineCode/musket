@@ -84,7 +84,7 @@ namespace musket {
 			text_ = create_text_layout( format_, size(), str );
 		}
 
-		void on_event(window_event::draw, window& wnd)
+		void on_event(event::draw, window& wnd)
 		{
 			if( !this->is_visible() ) {
 				return;
@@ -98,7 +98,7 @@ namespace musket {
 			data_.draw_text( rt, { rc.left, rc.top }, text_ );
 		}
 
-		void on_event(window_event::recreated_target, window& wnd)
+		void on_event(event::recreated_target, window& wnd)
 		{
 			data_.recreated_target( wnd.render_target() );
 		}

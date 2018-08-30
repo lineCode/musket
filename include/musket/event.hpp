@@ -17,131 +17,118 @@
 
 namespace musket {
 
-	class window;
-
 	template <typename T, typename... Events>
 	struct events_holder
 	{ };
 
-namespace window_event {
+namespace event {
 
 	struct idle
 	{
-		using type = void (window&);
+		template <typename Object>
+		using type = void (Object&);
 	};
 
 	struct draw
 	{
-		using type = void (window&);
+		template <typename Object>
+		using type = void (Object&);
 	};
 
 	struct recreated_target
 	{
-		using type = void (window&);
+		template <typename Object>
+		using type = void (Object&);
+	};
+
+	struct attached
+	{
+		template <typename Object>
+		using type = void (Object&);
+	};
+
+	struct detached
+	{
+		template <typename Object>
+		using type = void (Object&);
 	};
 
 	struct resized
 	{
-		using type = void (window&, spirea::area_t< std::uint32_t > const&);
-	};
-
-	struct attached_widget
-	{
-		using type = void (window&);
+		template <typename Object>
+		using type = void (Object&, spirea::area_t< std::uint32_t > const&);
 	};
 
 	struct mouse_button_pressed
 	{
-		using type = void (window&, mouse_button, mouse_button, spirea::point_t< std::int32_t > const&);
+		template <typename Object>
+		using type = void (Object&, mouse_button, mouse_button, cursor_position const&);
 	};
 
 	struct mouse_button_released
 	{
-		using type = void (window&, mouse_button, mouse_button, spirea::point_t< std::int32_t > const&);
+		template <typename Object>
+		using type = void (Object&, mouse_button, mouse_button, cursor_position const&);
+	};
+
+	struct mouse_moved
+	{
+		template <typename Object>
+		using type = void (Object&, mouse_button, cursor_position const&);
+	};
+
+	struct mouse_entered
+	{
+		template <typename Object>
+		using type = void (Object&, mouse_button);
+	};
+
+	struct mouse_leaved
+	{
+		template <typename Object>
+		using type = void (Object&, mouse_button);
 	};
 
 namespace detail {
 
 	struct mouse_moved_distributor
 	{
-		using type = void (window&, mouse_button);
+		template <typename Object>
+		using type = void (Object&, mouse_button);
 	};
-
-} // namespace detail
-
-	struct mouse_moved
-	{
-		using type = void (window&, mouse_button, spirea::point_t< std::int32_t > const&);
-	};
-
-	struct mouse_entered
-	{
-		using type = void (window&, mouse_button);
-	};
-
-	struct mouse_leaved
-	{
-		using type = void (window&, mouse_button);
-	};
-
-namespace detail {
 
 	struct auto_resize
 	{
-		using type = void (window&, spirea::point_t< float > const&);
+		template <typename Object>
+		using type = void (Object&, spirea::point_t< float > const&);
 	};
 
 	struct auto_relocation
 	{
-		using type = void (window&, spirea::point_t< float > const&);
+		template <typename Object>
+		using type = void (Object&, spirea::point_t< float > const&);
 	};
 
 } // namespace detail
 
-} // namespace window_event
+} // namespace event
 
-	using window_events = events_holder<
-		window_event::idle,
-		window_event::draw,
-		window_event::recreated_target,
-		window_event::resized,
-		window_event::attached_widget,
-		window_event::mouse_button_pressed,
-		window_event::mouse_button_released,
-		window_event::detail::mouse_moved_distributor,
-		window_event::detail::auto_resize,
-		window_event::detail::auto_relocation
-	>;
-
-	using default_window_events = events_holder<
-		window_event::idle,
-		window_event::draw,
-		window_event::recreated_target,
-		window_event::resized,
-		window_event::attached_widget,
-		window_event::mouse_button_pressed,
-		window_event::mouse_button_released,
-		window_event::mouse_entered,
-		window_event::mouse_leaved,
-		window_event::mouse_moved
-	>;
-
-	template <typename Widget, typename Event, typename = typename Event::type, typename = void>
+	template <typename Object, typename Event, typename = typename Event::template type< Object >, typename = void>
 	struct has_on_event :
 		public std::false_type
 	{ };
 
-	template <typename Widget, typename Event, typename R, typename... Args>
+	template <typename Object, typename Event, typename R, typename... Args>
 	struct has_on_event< 
-		Widget, Event, R (Args...), 
-		std::void_t< decltype( std::declval< Widget >()->on_event( Event{}, std::declval< Args >()... ) ) >
+		Object, Event, R (Args...), 
+		std::void_t< decltype( std::declval< Object >()->on_event( Event{}, std::declval< Args >()... ) ) >
 	> :
 		public std::true_type
 	{ };
 
 namespace detail {
 	
-	template <typename Event, typename EventFunc = typename Event::type, typename = void>
+	template <typename Object, typename Event, typename EventFunc = typename Event::template type< Object >, typename = void>
 	class event_handler_element_default
 	{
 		spirea::signal< EventFunc, spirea::signal_option::fold > signal_;
@@ -165,7 +152,7 @@ namespace detail {
 		}
 	};
 
-	template <typename Event, typename EventFunc = typename Event::type, typename = void>
+	template <typename Object, typename Event, typename EventFunc = typename Event::template type< Object >, typename = void>
 	class event_handler_element_to_widget
 	{
 		spirea::signal< EventFunc, spirea::signal_option::fold > signal_;
@@ -189,10 +176,10 @@ namespace detail {
 		}
 	};
 
-	template <typename Event, typename... Args>
-	class event_handler_element_to_widget< Event, void (Args...), std::enable_if_t<
-		std::is_same_v< Event, window_event::mouse_button_pressed >
-		|| std::is_same_v< Event, window_event::mouse_button_released > 
+	template <typename Object, typename Event, typename... Args>
+	class event_handler_element_to_widget< Object, Event, void (Args...), std::enable_if_t<
+		std::is_same_v< Event, event::mouse_button_pressed >
+		|| std::is_same_v< Event, event::mouse_button_released > 
 	> >
 	{
 		spirea::signal< bool (spirea::point_t< std::int32_t > const&, Args...), spirea::signal_option::maybe > signal_;
@@ -225,18 +212,18 @@ namespace detail {
 		}
 	};
 
-	template <typename Event, typename... Args>
-	class event_handler_element_to_widget< Event, void (Args...), std::enable_if_t<
-		std::is_same_v< Event, window_event::detail::mouse_moved_distributor > 
+	template <typename Object, typename Event, typename... Args>
+	class event_handler_element_to_widget< Object, Event, void (Args...), std::enable_if_t<
+		std::is_same_v< Event, event::detail::mouse_moved_distributor > 
 	> >
 	{
 		struct object
 		{
 			std::weak_ptr< void > wp;
 			std::function< spirea::rect_t< float >() > size;
-			std::function< typename window_event::mouse_moved::type > moved;
-			std::function< typename window_event::mouse_entered::type > entered;
-			std::function< typename window_event::mouse_leaved::type > leaved;
+			std::function< typename event::mouse_moved::template type< Object > > moved;
+			std::function< typename event::mouse_entered::template type< Object > > entered;
+			std::function< typename event::mouse_leaved::template type< Object > > leaved;
 		};
 
 		using container_type = std::vector< std::shared_ptr< object > >;
@@ -313,7 +300,7 @@ namespace detail {
 		}
 
 		template <typename... As>
-		void invoke(window_event::mouse_leaved, As&&... args)
+		void invoke(event::mouse_leaved, As&&... args)
 		{
 			if( over_ ) {
 				if( over_->leaved ) {
@@ -331,31 +318,31 @@ namespace detail {
 
 } // namespace detail
 
-	template <typename Events, template <typename...> typename Element = detail::event_handler_element_default>
+	template <typename Object, typename Events, template <typename...> typename Element = detail::event_handler_element_default>
 	class event_handler;
 
-	template <typename... Events, template <typename...> typename Element>
-	class event_handler< events_holder< Events... >, Element >
+	template <typename Object, typename... Events, template <typename...> typename Element>
+	class event_handler< Object, events_holder< Events... >, Element >
 	{
-		std::tuple< Element< Events >... > table_;
+		std::tuple< Element< Object, Events >... > table_;
 
 	public:
 		template <typename Event, typename... Args>
 		spirea::connection connect(Event, Args&&... args)
 		{
-			return std::get< Element< Event > >( table_ ).connect( std::forward< Args >( args )... );
+			return std::get< Element< Object, Event > >( table_ ).connect( std::forward< Args >( args )... );
 		}
 
 		template <typename Event, typename... Args>
 		auto invoke(Event, Args&&... args)
 		{
-			return std::get< Element< Event > >( table_ ).invoke( std::forward< Args >( args )... );
+			return std::get< Element< Object, Event > >( table_ ).invoke( std::forward< Args >( args )... );
 		}
 
 		template <typename Event>
 		void shrink_to_fit(Event)
 		{
-			std::get< Element< Event > >( table_ ).shrink_to_fit();
+			std::get< Element< Object, Event > >( table_ ).shrink_to_fit();
 		}
 	};
 
@@ -388,13 +375,13 @@ namespace detail {
 
 namespace detail {
 
-	template <typename Events, template <typename...> typename Element, typename Event, typename R, typename... Args, typename Widget>
-	inline spirea::connection connect_event_helper(event_handler< Events, Element >& eh, Event, R (*)(Args...), Widget& w)
+	template <typename Object, typename Events, template <typename...> typename Element, typename Event, typename R, typename... Args, typename Widget>
+	inline spirea::connection connect_event_helper(event_handler< Object, Events, Element >& eh, Event, R (*)(Args...), Widget& w)
 	{
 		if constexpr( 
-			std::is_same_v< Event, window_event::mouse_button_pressed > 
-			|| std::is_same_v< Event, window_event::mouse_button_released > 
-			|| std::is_same_v< Event, window_event::detail::mouse_moved_distributor > 
+			std::is_same_v< Event, event::mouse_button_pressed > 
+			|| std::is_same_v< Event, event::mouse_button_released > 
+			|| std::is_same_v< Event, event::detail::mouse_moved_distributor > 
 		) {
 			return eh.connect( Event{}, w );
 		}
@@ -403,14 +390,14 @@ namespace detail {
 		}
 	}
 
-	template <typename Events, template <typename...> typename Element, typename Event, typename Widget>
-	inline void connect_events_impl(event_handler< Events, Element >& eh, Event, Widget& w, event_connections< Events >& conns)
+	template <typename Object, typename Events, template <typename...> typename Element, typename Event, typename Widget>
+	inline void connect_events_impl(event_handler< Object, Events, Element >& eh, Event, Widget& w, event_connections< Events >& conns)
 	{
-		if constexpr( std::is_same_v< Event, window_event::detail::mouse_moved_distributor > ) {
+		if constexpr( std::is_same_v< Event, event::detail::mouse_moved_distributor > ) {
 			constexpr bool has_events = 
-				has_on_event< Widget, window_event::mouse_moved >::value
-				|| has_on_event< Widget, window_event::mouse_entered >::value
-				|| has_on_event< Widget, window_event::mouse_leaved >::value;
+				has_on_event< Widget, event::mouse_moved >::value
+				|| has_on_event< Widget, event::mouse_entered >::value
+				|| has_on_event< Widget, event::mouse_leaved >::value;
 			if constexpr( has_events ) {
 				conns.assign( Event{}, connect_event_helper( eh, Event{}, std::add_pointer_t< typename Event::type >{}, w ) );
 			}
@@ -422,8 +409,8 @@ namespace detail {
 
 } // namespace detail
 
-	template <typename... Events, typename Widget, template <typename...> typename Element>
-	inline event_connections< events_holder< Events... > > connect_events(event_handler< events_holder< Events... >, Element >& eh, Widget& w)
+	template <typename Object, typename... Events, typename Widget, template <typename...> typename Element>
+	inline event_connections< events_holder< Events... > > connect_events(event_handler< Object, events_holder< Events... >, Element >& eh, Widget& w)
 	{
 		event_connections< events_holder< Events... > > conns;
 		( ..., detail::connect_events_impl( eh, Events{}, w, conns ) );

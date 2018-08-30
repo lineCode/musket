@@ -20,6 +20,7 @@ namespace scroll_bar_event {
 
 	struct scroll
 	{
+		template <typename>
 		using type = void (std::uint32_t, std::uint32_t);
 	};
 
@@ -121,6 +122,9 @@ namespace scroll_bar_event {
 		std::optional< scroll_bar_thumb_style > pressed_style;
 	};
 
+	template <axis_flag>
+	class scroll_bar;
+
 namespace detail {
 
 	template <typename Parent, axis_flag Direction>
@@ -139,7 +143,7 @@ namespace detail {
 		spirea::connection conn_sliding_;
 		spirea::connection conn_finish_sliding_;
 		std::uint32_t pos_ = 0;
-		event_handler< scroll_bar_events > handler_;
+		event_handler< scroll_bar< Direction >, scroll_bar_events > handler_;
 
 	public:
 		scroll_bar_thumb(
@@ -175,7 +179,7 @@ namespace detail {
 			return pos_;
 		}
 
-		void on_event(window_event::draw, window& wnd)
+		void on_event(event::draw, window& wnd)
 		{
 			if( !is_visible() ) {
 				return;
@@ -189,14 +193,13 @@ namespace detail {
 			data.draw_edge( rt, rc );
 		}
 		
-		void on_event(window_event::recreated_target, window& wnd)
+		void on_event(event::recreated_target, window& wnd)
 		{
 			for( auto& i : states_.data() ) {
 				i.recreated_target( wnd.render_target() );
 			}
 		}
-
-		void on_event(window_event::mouse_button_pressed, window& wnd, mouse_button btn, mouse_button, spirea::point_t< std::int32_t > const& pt)
+		void on_event(event::mouse_button_pressed, window& wnd, mouse_button btn, mouse_button, spirea::point_t< std::int32_t > const& pt)
 		{
 			if( spirea::enabled( btn, mouse_button::left ) ) {
 				states_.trasition( state::pressed );
@@ -204,7 +207,7 @@ namespace detail {
 			}
 		}
 
-		void on_event(window_event::mouse_button_released, window& wnd, mouse_button btn, mouse_button, spirea::point_t< std::int32_t > const&)
+		void on_event(event::mouse_button_released, window& wnd, mouse_button btn, mouse_button, spirea::point_t< std::int32_t > const&)
 		{
 			if( spirea::enabled( btn, mouse_button::left ) ) {
 				states_.trasition( state::over );
@@ -212,7 +215,7 @@ namespace detail {
 			}
 		}
 
-		void on_event(window_event::mouse_entered, window& wnd, mouse_button btns)
+		void on_event(event::mouse_entered, window& wnd, mouse_button btns)
 		{
 			if( spirea::enabled( btns, mouse_button::left ) ) {
 				states_.trasition( state::pressed );
@@ -223,7 +226,7 @@ namespace detail {
 			wnd.redraw();
 		}
 
-		void on_event(window_event::mouse_leaved, window& wnd, mouse_button)
+		void on_event(event::mouse_leaved, window& wnd, mouse_button)
 		{
 			if( !conn_sliding_.is_connected() ) {
 				states_.trasition( state::idle );
@@ -237,7 +240,7 @@ namespace detail {
 			prev_pt_ = pt;
 
 			conn_sliding_ = wnd.connect( 
-				window_event::mouse_moved{}, 
+				event::mouse_moved{}, 
 				[this](window& wnd, mouse_button, spirea::point_t< std::int32_t > const& now_pt) mutable {
 					auto const rc = this->size();
 					auto const parent_rc = parent_->size();
@@ -279,7 +282,7 @@ namespace detail {
 			);
 
 			conn_finish_sliding_ = wnd.connect( 
-				window_event::mouse_button_released{}, 
+				event::mouse_button_released{}, 
 				[this](window& wnd, mouse_button btn, mouse_button, spirea::point_t< std::int32_t > const&) mutable {
 					if( spirea::enabled( btn, mouse_button::left ) ) {
 						states_.trasition( state::idle );
@@ -393,7 +396,7 @@ namespace detail {
 			return thumb_->connect( Event{}, std::forward< F >( f ) );
 		}
 
-		void on_event(window_event::draw, window& wnd)
+		void on_event(event::draw, window& wnd)
 		{
 			if( !is_visible() ) {
 				return;
@@ -406,12 +409,12 @@ namespace detail {
 			sd_.draw_edge( rt, rc );
 		}
 
-		void on_event(window_event::recreated_target, window& wnd)
+		void on_event(event::recreated_target, window& wnd)
 		{
 			sd_.recreated_target( wnd.render_target() );
 		}
 
-		void on_event(window_event::attached_widget, window& wnd)
+		void on_event(event::attached, window& wnd)
 		{
 			wnd.attach_widget( thumb_ );
 		}
