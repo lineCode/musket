@@ -37,8 +37,8 @@ namespace detail {
 			) );
 			constexpr auto default_dpi = spirea::windows::api::user_default_screen_dpi< LONG >;
 
-			auto const width = ( trc.right - trc.left ) * static_cast< LONG >( dpi.x ) / default_dpi;
-			auto const height = ( trc.bottom - trc.top ) * static_cast< LONG >( dpi.y ) / default_dpi;
+			auto const width = spirea::width( trc ) * static_cast< LONG >( dpi.x ) / default_dpi;
+			auto const height = spirea::height( trc ) * static_cast< LONG >( dpi.y ) / default_dpi;
 
 			wnd = { caption, T::style, T::ex_style, trc.left, trc.top, width, height };
 
@@ -54,10 +54,7 @@ namespace detail {
 				D2D1::RenderTargetProperties(),
 				D2D1::HwndRenderTargetProperties( 
 					wnd.handle(), 
-					{ 
-						static_cast< UINT >( spirea::rect_traits< RECT >::width( rc ) ),
-						static_cast< UINT >( spirea::rect_traits< RECT >::height( rc ) ),
-					} 
+					spirea::area_traits< D2D1_SIZE_U >::construct( spirea::area( rc ) )
 				),
 				rt.pp()
 			) );
@@ -177,8 +174,8 @@ namespace detail {
 
 		p_->wnd.connect( WM_SIZE, [this](spirea::windows::window, WPARAM, LPARAM lparam) -> LRESULT {
 			auto const rc = p_->wnd.get_client_rect();
-			auto const width = static_cast< std::uint32_t >( rc.right - rc.left );
-			auto const height = static_cast< std::uint32_t >( rc.bottom - rc.top );
+			auto const width = static_cast< std::uint32_t >( spirea::width( rc ) );
+			auto const height = static_cast< std::uint32_t >( spirea::height( rc ) );
 
 			spirea::windows::try_hresult( p_->rt->Resize( { width, height } ) );
 
@@ -215,7 +212,7 @@ namespace detail {
 
 		p_->wnd.connect( WM_DPICHANGED, [this](spirea::windows::window, WPARAM, LPARAM lparam) -> LRESULT {
 			auto const& rc = *reinterpret_cast< RECT const* >( lparam );
-			SetWindowPos( p_->wnd.handle(), nullptr, rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top, SWP_NOZORDER | SWP_NOACTIVATE );
+			SetWindowPos( p_->wnd.handle(), nullptr, rc.left, rc.top, spirea::width( rc ), spirea::height( rc ), SWP_NOZORDER | SWP_NOACTIVATE );
 
 			auto const dpi = spirea::windows::api::get_dpi_for_window( p_->wnd );
 			p_->rt->SetDpi( static_cast< float >( dpi ), static_cast< float >( dpi ) );

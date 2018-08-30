@@ -16,10 +16,7 @@
 namespace musket {
 
 	template <typename T>
-	struct rgba_color_traits_impl
-	{
-		using value_type = typename T::value_type;
-	};
+	struct rgba_color_traits_impl;
 
 namespace rgba_color_traits_detail {
 
@@ -109,8 +106,7 @@ namespace rgba_color_traits_detail {
 			);
 		}
 
-		template <typename U>
-		static auto& red(U& c) noexcept
+		static value_type& red(type& c) noexcept
 		{
 			if constexpr( rgba_color_traits_detail::has_red_function< T >::value ) {
 				return rgba_color_traits_impl< type >::red( c );
@@ -120,8 +116,17 @@ namespace rgba_color_traits_detail {
 			}
 		}
 
-		template <typename U>
-		static auto& green(U& c) noexcept
+		static value_type const& red(type const& c) noexcept
+		{
+			if constexpr( rgba_color_traits_detail::has_red_function< T >::value ) {
+				return rgba_color_traits_impl< type >::red( c );
+			}
+			else {
+				return c.r;
+			}
+		}
+
+		static value_type& green(type& c) noexcept
 		{
 			if constexpr( rgba_color_traits_detail::has_green_function< T >::value ) {
 				return rgba_color_traits_impl< type >::green( c );
@@ -131,8 +136,17 @@ namespace rgba_color_traits_detail {
 			}
 		}
 
-		template <typename U>
-		static auto& blue(U& c) noexcept
+		static value_type const& green(type const& c) noexcept
+		{
+			if constexpr( rgba_color_traits_detail::has_green_function< T >::value ) {
+				return rgba_color_traits_impl< type >::green( c );
+			}
+			else {
+				return c.g;
+			}
+		}
+
+		static value_type& blue(type& c) noexcept
 		{
 			if constexpr( rgba_color_traits_detail::has_blue_function< T >::value ) {
 				return rgba_color_traits_impl< type >::blue( c );
@@ -142,10 +156,29 @@ namespace rgba_color_traits_detail {
 			}
 		}
 
-		template <typename U>
-		static auto& alpha(U& c) noexcept
+		static value_type const& blue(type const& c) noexcept
+		{
+			if constexpr( rgba_color_traits_detail::has_blue_function< T >::value ) {
+				return rgba_color_traits_impl< type >::blue( c );
+			}
+			else {
+				return c.b;
+			}
+		}
+
+		static value_type& alpha(type& c) noexcept
 		{
 			if constexpr( rgba_color_traits_detail::has_alpha_function< T >::value ) {
+				return rgba_color_traits_impl< type >::alpha( c );
+			}
+			else {
+				return c.a;
+			}
+		}
+
+		static value_type const& alpha(type const& c) noexcept
+		{
+			if constexpr( rgba_color_traits_detail::has_blue_function< T >::value ) {
 				return rgba_color_traits_impl< type >::alpha( c );
 			}
 			else {
